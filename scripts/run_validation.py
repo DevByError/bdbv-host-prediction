@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Validation script for predictions.
-"""
+"""Sanity-check a predictions CSV, optionally against ground truth."""
 
 import sys
 from pathlib import Path
@@ -21,18 +19,9 @@ logger = get_logger(__name__)
 
 
 def validate_predictions(predictions_df: pd.DataFrame) -> dict:
-    """
-    Validate prediction outputs.
-
-    Args:
-        predictions_df: Predictions DataFrame
-
-    Returns:
-        dict: Validation results
-    """
+    """Shape and range checks on a predictions frame."""
     results = {"valid": True, "warnings": [], "errors": [], "statistics": {}}
 
-    # Check required columns
     required_cols = ["susceptibility_score", "risk_category"]
     missing_cols = [col for col in required_cols if col not in predictions_df.columns]
 
@@ -41,20 +30,17 @@ def validate_predictions(predictions_df: pd.DataFrame) -> dict:
         results["errors"].append(f"Missing required columns: {missing_cols}")
         return results
 
-    # Check score range
     scores = predictions_df["susceptibility_score"]
     if (scores < 0).any() or (scores > 1).any():
         results["errors"].append("Scores outside [0,1] range")
         results["valid"] = False
 
-    # Check risk categories
     valid_categories = ["High", "Medium", "Low"]
     invalid_categories = set(predictions_df["risk_category"]) - set(valid_categories)
     if invalid_categories:
         results["errors"].append(f"Invalid risk categories: {invalid_categories}")
         results["valid"] = False
 
-    # Statistics
     results["statistics"] = {
         "n_samples": len(predictions_df),
         "mean_score": scores.mean(),
@@ -66,7 +52,7 @@ def validate_predictions(predictions_df: pd.DataFrame) -> dict:
         "low_risk": len(predictions_df[predictions_df["risk_category"] == "Low"]),
     }
 
-    # Check class balance warnings
+    # mostly-high-risk output usually means a threshold or scaling problem
     high_risk_pct = results["statistics"]["high_risk"] / len(predictions_df)
     if high_risk_pct > 0.5:
         results["warnings"].append(
@@ -79,19 +65,9 @@ def validate_predictions(predictions_df: pd.DataFrame) -> dict:
 def validate_against_ground_truth(
     predictions_df: pd.DataFrame, ground_truth_df: pd.DataFrame
 ) -> dict:
-    """
-    Validate predictions against ground truth data.
-
-    Args:
-        predictions_df: Predictions DataFrame
-        ground_truth_df: Ground truth DataFrame
-
-    Returns:
-        dict: Validation results
-    """
+    """Score predictions against labelled rows, matched on species pair."""
     from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 
-    # Merge predictions with ground truth
     merged = predictions_df.merge(
         ground_truth_df[["host_species", "virus_species", "infection_status"]],
         on=["host_species", "virus_species"],
@@ -101,7 +77,7 @@ def validate_against_ground_truth(
     if len(merged) == 0:
         return {"valid": False, "error": "No overlapping samples found for validation"}
 
-    # Convert predictions to binary (threshold 0.5)
+    # 0.5 cut, same as everywhere else
     y_pred = (merged["susceptibility_score"] >= 0.5).astype(int)
     y_true = merged["infection_status"]
 
@@ -117,7 +93,6 @@ def validate_against_ground_truth(
 
 
 def main():
-    """Run validation pipeline."""
     parser = argparse.ArgumentParser(description="Validate BDBV host predictions")
     parser.add_argument(
         "--predictions", type=str, required=True, help="Path to predictions CSV file"
@@ -134,7 +109,6 @@ def main():
     logger.info("=" * 80)
     logger.info(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Load predictions
     predictions_path = Path(args.predictions)
     if not predictions_path.exists():
         logger.error(f"Predictions file not found: {predictions_path}")
@@ -143,7 +117,6 @@ def main():
     predictions_df = pd.read_csv(predictions_path)
     logger.info(f"Loaded {len(predictions_df)} predictions")
 
-    # Validate predictions
     logger.info("\n[1] Validating Predictions")
     validation_results = validate_predictions(predictions_df)
 
@@ -155,7 +128,6 @@ def main():
 
     logger.info("✓ Predictions format valid")
 
-    # Print statistics
     stats = validation_results["statistics"]
     logger.info("\n[2] Prediction Statistics")
     logger.info(f"  Total samples: {stats['n_samples']}")
@@ -176,7 +148,6 @@ def main():
         for warning in validation_results["warnings"]:
             logger.warning(f"  ⚠ {warning}")
 
-    # Validate against ground truth if provided
     if args.ground_truth:
         logger.info("\n[4] Validating Against Ground Truth")
         ground_truth_path = Path(args.ground_truth)
@@ -198,12 +169,10 @@ def main():
             else:
                 logger.warning(f"  ⚠ {results.get('error', 'Validation failed')}")
 
-    # Save validation report
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Create report
         report = {
             "timestamp": datetime.now().isoformat(),
             "predictions_file": str(predictions_path),

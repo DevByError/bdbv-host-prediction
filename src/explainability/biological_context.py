@@ -1,23 +1,10 @@
-"""
-Map feature importance to biological pathways and functions.
-"""
+"""Lookup table tying feature names to what they mean biologically."""
 
 import pandas as pd
 from typing import Dict, List, Optional
 
 
 class BiologicalContext:
-    """
-    Map machine learning features to biological context.
-
-    Provides interpretation of features in terms of:
-    - Viral evolution
-    - Host-pathogen interactions
-    - Ecological factors
-    - Molecular mechanisms
-    """
-
-    # Biological mapping dictionary
     BIOLOGICAL_MAP = {
         # Genomic features
         "gc_content": {
@@ -113,21 +100,11 @@ class BiologicalContext:
 
     @classmethod
     def map_feature(cls, feature_name: str) -> Dict:
-        """
-        Get biological context for a feature.
-
-        Args:
-            feature_name: Name of the feature
-
-        Returns:
-            Dict: Biological context
-        """
-        # Find matching feature
+        """Substring match, so engineered variants like gc_content_log resolve to the base entry."""
         for key, context in cls.BIOLOGICAL_MAP.items():
             if key in feature_name.lower():
                 return context
 
-        # Default for unknown features
         return {
             "category": "Unknown",
             "description": feature_name,
@@ -137,16 +114,7 @@ class BiologicalContext:
 
     @classmethod
     def annotate_importance(cls, importance_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Annotate feature importance with biological context.
-
-        Args:
-            importance_df: DataFrame with 'feature' and 'importance' columns
-
-        Returns:
-            pd.DataFrame: Annotated importance
-        """
-        # Add biological annotations
+        """Adds category, biological_meaning and pathway columns in place."""
         importance_df["category"] = importance_df["feature"].apply(
             lambda x: cls.map_feature(x)["category"]
         )
@@ -161,15 +129,6 @@ class BiologicalContext:
 
     @classmethod
     def get_category_summary(cls, importance_df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Summarize importance by biological category.
-
-        Args:
-            importance_df: Annotated importance DataFrame
-
-        Returns:
-            pd.DataFrame: Category summary
-        """
         summary = (
             importance_df.groupby("category")
             .agg({"importance": ["sum", "mean", "count"]})
@@ -188,23 +147,12 @@ class BiologicalContext:
 
     @classmethod
     def get_pathway_insights(cls, importance_df: pd.DataFrame) -> Dict:
-        """
-        Generate biological insights from feature importance.
-
-        Args:
-            importance_df: Annotated importance DataFrame
-
-        Returns:
-            Dict: Biological insights
-        """
-        # Group by pathway
         pathway_summary = (
             importance_df.groupby("pathway")
             .agg({"importance": "sum"})
             .sort_values("importance", ascending=False)
         )
 
-        # Identify key pathways
         top_pathways = pathway_summary.head(5)
 
         insights = {
@@ -216,7 +164,7 @@ class BiologicalContext:
             "key_features": importance_df.head(10).to_dict("records"),
         }
 
-        # Add interpretation
+        # canned sentences, triggered only if the pathway lands in the top 3
         interpretations = []
 
         if "Viral entry" in top_pathways.index.tolist()[:3]:

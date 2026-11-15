@@ -1,6 +1,4 @@
-"""
-Classical ML models: Random Forest, XGBoost, Logistic Regression, SVM.
-"""
+"""Classical classifiers used in the comparison."""
 
 import numpy as np
 import pandas as pd
@@ -24,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class RandomForestModel(BaseModel):
-    """
-    Random Forest classifier with balanced class weighting.
-    """
+    """Random Forest, balanced class weights."""
 
     def __init__(self, config: Optional[Dict] = None):
         config = config or {}
@@ -44,11 +40,10 @@ class RandomForestModel(BaseModel):
         self._build_model()
 
     def _build_model(self):
-        """Build the Random Forest model"""
         self.model = RandomForestClassifier(**self.config)
 
     def fit(self, X: Union[np.ndarray, pd.DataFrame], y: np.ndarray):
-        """Train the model"""
+        self._validate_fit_inputs(X, y)
         if isinstance(X, pd.DataFrame):
             self.feature_names = X.columns.tolist()
             X = X.values
@@ -58,9 +53,9 @@ class RandomForestModel(BaseModel):
         logger.info(f"RandomForest trained on {X.shape[0]} samples")
 
     def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make predictions"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -68,9 +63,9 @@ class RandomForestModel(BaseModel):
         return self.model.predict(X)
 
     def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Get prediction probabilities"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -79,13 +74,13 @@ class RandomForestModel(BaseModel):
 
 
 class XGBoostModel(BaseModel):
-    """
-    XGBoost classifier with balanced class weighting.
-    """
+    """XGBoost. Optional dependency - raises on construction if not installed."""
 
     def __init__(self, config: Optional[Dict] = None):
         if not XGB_AVAILABLE:
-            raise ImportError("XGBoost is not installed")
+            raise ImportError(
+                "XGBoost is not installed. Install with: pip install xgboost"
+            )
 
         config = config or {}
         default_config = {
@@ -96,7 +91,6 @@ class XGBoostModel(BaseModel):
             "colsample_bytree": 0.8,
             "scale_pos_weight": 1.0,
             "random_state": 42,
-            "use_label_encoder": False,
             "eval_metric": "logloss",
         }
         default_config.update(config)
@@ -104,11 +98,10 @@ class XGBoostModel(BaseModel):
         self._build_model()
 
     def _build_model(self):
-        """Build the XGBoost model"""
         self.model = xgb.XGBClassifier(**self.config)
 
     def fit(self, X: Union[np.ndarray, pd.DataFrame], y: np.ndarray):
-        """Train the model"""
+        self._validate_fit_inputs(X, y)
         if isinstance(X, pd.DataFrame):
             self.feature_names = X.columns.tolist()
             X = X.values
@@ -118,9 +111,9 @@ class XGBoostModel(BaseModel):
         logger.info(f"XGBoost trained on {X.shape[0]} samples")
 
     def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make predictions"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -128,9 +121,9 @@ class XGBoostModel(BaseModel):
         return self.model.predict(X)
 
     def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Get prediction probabilities"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -139,9 +132,7 @@ class XGBoostModel(BaseModel):
 
 
 class LogisticRegressionModel(BaseModel):
-    """
-    Logistic Regression with balanced class weighting.
-    """
+    """Linear baseline. Coefficients are log-odds per SD on the scaled features."""
 
     def __init__(self, config: Optional[Dict] = None):
         config = config or {}
@@ -158,16 +149,16 @@ class LogisticRegressionModel(BaseModel):
         self._build_model()
 
     def _build_model(self):
-        """Build the Logistic Regression model"""
         self.model = LogisticRegression(**self.config)
 
     def fit(self, X: Union[np.ndarray, pd.DataFrame], y: np.ndarray):
-        """Train the model with scaling"""
+        # FeatureEngineer already scales upstream; this scaler is just so the
+        # class works standalone on raw input
+        self._validate_fit_inputs(X, y)
         if isinstance(X, pd.DataFrame):
             self.feature_names = X.columns.tolist()
             X = X.values
 
-        # Scale features
         X_scaled = self.scaler.fit_transform(X)
 
         self.model.fit(X_scaled, y)
@@ -175,9 +166,9 @@ class LogisticRegressionModel(BaseModel):
         logger.info(f"LogisticRegression trained on {X.shape[0]} samples")
 
     def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make predictions"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -186,9 +177,9 @@ class LogisticRegressionModel(BaseModel):
         return self.model.predict(X_scaled)
 
     def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Get prediction probabilities"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -198,9 +189,7 @@ class LogisticRegressionModel(BaseModel):
 
 
 class SVMModel(BaseModel):
-    """
-    SVM with balanced class weighting.
-    """
+    """RBF SVM. probability=True by default since we need predict_proba."""
 
     def __init__(self, config: Optional[Dict] = None):
         config = config or {}
@@ -218,16 +207,15 @@ class SVMModel(BaseModel):
         self._build_model()
 
     def _build_model(self):
-        """Build the SVM model"""
         self.model = SVC(**self.config)
 
     def fit(self, X: Union[np.ndarray, pd.DataFrame], y: np.ndarray):
-        """Train the model with scaling"""
+        # same standalone-scaler story as LogisticRegressionModel
+        self._validate_fit_inputs(X, y)
         if isinstance(X, pd.DataFrame):
             self.feature_names = X.columns.tolist()
             X = X.values
 
-        # Scale features
         X_scaled = self.scaler.fit_transform(X)
 
         self.model.fit(X_scaled, y)
@@ -235,9 +223,9 @@ class SVMModel(BaseModel):
         logger.info(f"SVM trained on {X.shape[0]} samples")
 
     def predict(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Make predictions"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values
@@ -246,9 +234,9 @@ class SVMModel(BaseModel):
         return self.model.predict(X_scaled)
 
     def predict_proba(self, X: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
-        """Get prediction probabilities"""
         if not self._is_fitted:
             raise ValueError("Model must be fitted before prediction")
+        self._validate_predict_inputs(X)
 
         if isinstance(X, pd.DataFrame):
             X = X.values

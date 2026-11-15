@@ -1,0 +1,697 @@
+{
+  "dataset": {
+    "n_records": 10000,
+    "n_species": 41,
+    "n_families": 22,
+    "n_orders": 9,
+    "n_raw_columns": 18,
+    "n_engineered_features": 51,
+    "records_per_species": 244,
+    "infection_rate": 0.2414,
+    "n_positive": 2414,
+    "missing_values": 0,
+    "viruses": {
+      "BDBV": 10000
+    },
+    "infection_rate_by_order": {
+      "Primates": {
+        "mean": 0.3480191256830601,
+        "count": 2928
+      },
+      "Perissodactyla": {
+        "mean": 0.3114754098360656,
+        "count": 244
+      },
+      "Chiroptera": {
+        "mean": 0.2535860655737705,
+        "count": 1952
+      },
+      "Artiodactyla": {
+        "mean": 0.22404371584699453,
+        "count": 1464
+      },
+      "Proboscidea": {
+        "mean": 0.2222222222222222,
+        "count": 243
+      },
+      "Carnivora": {
+        "mean": 0.16120218579234974,
+        "count": 1464
+      },
+      "Rodentia": {
+        "mean": 0.12717948717948718,
+        "count": 975
+      },
+      "Hyracoidea": {
+        "mean": 0.11475409836065574,
+        "count": 244
+      },
+      "Aves": {
+        "mean": 0.1111111111111111,
+        "count": 486
+      }
+    },
+    "infection_rate_by_species": {
+      "Homo_sapiens": 0.6147540983606558,
+      "Gorilla_gorilla": 0.5819672131147541,
+      "Pan_troglodytes": 0.5778688524590164,
+      "Papio_anubis": 0.4344262295081967,
+      "Hipposideros_ruber": 0.430327868852459,
+      "Eidolon_helvum": 0.4180327868852459,
+      "Rousettus_aegyptiacus": 0.35655737704918034,
+      "Myotis_myotis": 0.35655737704918034,
+      "Cercopithecus_ascanius": 0.3524590163934426,
+      "Macaca_mulatta": 0.3483606557377049,
+      "Equus_quagza": 0.3114754098360656,
+      "Pongo_pygmaeus": 0.28688524590163933,
+      "Macaca_fascicularis": 0.2827868852459016,
+      "Giraffa_camelopardalis": 0.27049180327868855,
+      "Pongo_abelii": 0.2540983606557377,
+      "Ovis_aries": 0.24180327868852458,
+      "Bos_taurus": 0.22950819672131148,
+      "Ursus_arctos": 0.22540983606557377,
+      "Loxodonta_africana": 0.2222222222222222,
+      "Sus_scrofa": 0.22131147540983606,
+      "Cervus_elaphus": 0.21311475409836064,
+      "Panthera_leo": 0.21311475409836064,
+      "Canis_lupus": 0.18442622950819673,
+      "Capra_aegagrus_hircus": 0.1680327868852459,
+      "Rhinolophus_ferrumequinum": 0.1680327868852459,
+      "Hydrochoerus_hydrochaeris": 0.1646090534979424,
+      "Pan_paniscus": 0.1598360655737705,
+      "Mandrillus_sphinx": 0.1557377049180328,
+      "Panthera_tigris": 0.14754098360655737,
+      "Rattus_norvegicus": 0.13114754098360656,
+      "Chlorocebus_aethiops": 0.12704918032786885,
+      "Molossus_molossus": 0.12295081967213115,
+      "Gallus_gallus": 0.11522633744855967,
+      "Procavia_capensis": 0.11475409836065574,
+      "Felis_catus": 0.11065573770491803,
+      "Anas_platyrhynchos": 0.10699588477366255,
+      "Mus_musculus": 0.10655737704918032,
+      "Cricetus_cricetus": 0.10655737704918032,
+      "Tadarida_brasiliensis": 0.10655737704918032,
+      "Canis_familiaris": 0.0860655737704918,
+      "Nycteris_gambiensis": 0.06967213114754098
+    }
+  },
+  "experiment_1_holdout": {
+    "RandomForest": {
+      "accuracy": 0.7632,
+      "balanced_accuracy": 0.5532389012589487,
+      "precision": 0.5329341317365269,
+      "recall": 0.14759535655058043,
+      "f1": 0.23116883116883116,
+      "mcc": 0.18244660912402053,
+      "roc_auc": 0.6609602663190811,
+      "pr_auc": 0.38265359362362816,
+      "f1_ci": [
+        0.1928869300125106,
+        0.2754987667482811
+      ],
+      "roc_auc_ci": [
+        0.6356653025521032,
+        0.6855493956388574
+      ]
+    },
+    "LogisticRegression": {
+      "accuracy": 0.6016,
+      "balanced_accuracy": 0.6192670455489203,
+      "precision": 0.3336155800169348,
+      "recall": 0.6533996683250415,
+      "f1": 0.44170403587443946,
+      "mcc": 0.20440684348201435,
+      "roc_auc": 0.6702841442060474,
+      "pr_auc": 0.39768328376757023,
+      "f1_ci": [
+        0.41327708210020486,
+        0.46864319556242967
+      ],
+      "roc_auc_ci": [
+        0.6455660621837197,
+        0.6945090249604693
+      ]
+    },
+    "SVM": {
+      "accuracy": 0.6424,
+      "balanced_accuracy": 0.6404954667883566,
+      "precision": 0.3626062322946176,
+      "recall": 0.6368159203980099,
+      "f1": 0.4620938628158845,
+      "mcc": 0.2432790203433836,
+      "roc_auc": 0.6842015541690599,
+      "pr_auc": 0.4006270288654911,
+      "f1_ci": [
+        0.43080453209650105,
+        0.48974526473531566
+      ],
+      "roc_auc_ci": [
+        0.6596169206548033,
+        0.7085759786706495
+      ]
+    },
+    "XGBoost": {
+      "accuracy": 0.7644,
+      "balanced_accuracy": 0.5625138234324774,
+      "precision": 0.5360824742268041,
+      "recall": 0.1724709784411277,
+      "f1": 0.26097867001254704,
+      "mcc": 0.19992534885610494,
+      "roc_auc": 0.6774823824997311,
+      "pr_auc": 0.40884274408144977,
+      "f1_ci": [
+        0.22040428829759753,
+        0.3038605230386052
+      ],
+      "roc_auc_ci": [
+        0.6530802528849818,
+        0.7020531029030074
+      ]
+    }
+  },
+  "best_model": "SVM",
+  "experiment_2_baselines": {
+    "MajorityClass (always 0)": {
+      "accuracy": 0.7588,
+      "balanced_accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "mcc": 0.0,
+      "roc_auc": 0.5,
+      "pr_auc": 0.2412
+    },
+    "AlwaysPositive (always 1)": {
+      "accuracy": 0.2412,
+      "balanced_accuracy": 0.5,
+      "precision": 0.2412,
+      "recall": 1.0,
+      "f1": 0.38865613922010955,
+      "mcc": 0.0,
+      "roc_auc": 0.5,
+      "pr_auc": 0.2412
+    },
+    "Random (prevalence-matched)": {
+      "accuracy": 0.62,
+      "balanced_accuracy": 0.4854632128410836,
+      "precision": 0.2197092084006462,
+      "recall": 0.22553897180762852,
+      "f1": 0.2225859247135843,
+      "mcc": -0.02881714996769441,
+      "roc_auc": 0.5021142748740921,
+      "pr_auc": 0.24463869630111956
+    }
+  },
+  "experiment_3_cross_validation": {
+    "RandomForest": {
+      "record_cv_f1_mean": 0.23027219660769763,
+      "record_cv_f1_std": 0.025331077642786574,
+      "record_cv_auc_mean": 0.6573924106808915,
+      "record_cv_auc_std": 0.014111605874524875,
+      "species_cv_f1_mean": 0.010985448953034426,
+      "species_cv_f1_std": 0.018965418850190208,
+      "species_cv_auc_mean": 0.52672112404994,
+      "species_cv_auc_std": 0.03173107152692415
+    },
+    "LogisticRegression": {
+      "record_cv_f1_mean": 0.4359455547995606,
+      "record_cv_f1_std": 0.01497222797053429,
+      "record_cv_auc_mean": 0.6684262383984733,
+      "record_cv_auc_std": 0.01608004172407636,
+      "species_cv_f1_mean": 0.3203010279175385,
+      "species_cv_f1_std": 0.14393802975689723,
+      "species_cv_auc_mean": 0.5407357600262076,
+      "species_cv_auc_std": 0.07395297980878886
+    },
+    "SVM": {
+      "record_cv_f1_mean": 0.46209337146044815,
+      "record_cv_f1_std": 0.014137321952662032,
+      "record_cv_auc_mean": 0.6704481814627329,
+      "record_cv_auc_std": 0.015591520445387056,
+      "species_cv_f1_mean": 0.24081738699245397,
+      "species_cv_f1_std": 0.17453757161117275,
+      "species_cv_auc_mean": 0.5040442469350086,
+      "species_cv_auc_std": 0.040433931129585245
+    },
+    "XGBoost": {
+      "record_cv_f1_mean": 0.25957943368725156,
+      "record_cv_f1_std": 0.022267676203011528,
+      "record_cv_auc_mean": 0.6622788014400375,
+      "record_cv_auc_std": 0.01753684470924838,
+      "species_cv_f1_mean": 0.03197632987298777,
+      "species_cv_f1_std": 0.018321244329765684,
+      "species_cv_auc_mean": 0.5323065953296344,
+      "species_cv_auc_std": 0.05575918648424793
+    }
+  },
+  "experiment_4_ablation": {
+    "Full feature set": {
+      "f1": 0.4620938628158845,
+      "roc_auc": 0.6842015541690599
+    },
+    "- Viral genome": {
+      "f1": 0.4713763702801462,
+      "roc_auc": 0.6834156401265505,
+      "n_features_removed": 10
+    },
+    "- Host life history": {
+      "f1": 0.4554941682013505,
+      "roc_auc": 0.6741656329143249,
+      "n_features_removed": 7
+    },
+    "- Taxonomy": {
+      "f1": 0.4275449101796407,
+      "roc_auc": 0.6569830517068497,
+      "n_features_removed": 13
+    },
+    "- Ecology & behaviour": {
+      "f1": 0.4600456621004566,
+      "roc_auc": 0.6811697967725947,
+      "n_features_removed": 16
+    },
+    "- Derived risk scores": {
+      "f1": 0.4548780487804878,
+      "roc_auc": 0.6838938325417369,
+      "n_features_removed": 4
+    }
+  },
+  "experiment_5_permutation_importance": [
+    {
+      "feature": "is_hominidae",
+      "importance": 0.03673071825166176,
+      "std": 0.0020366544578030435
+    },
+    {
+      "feature": "host_species",
+      "importance": 0.0346583847910521,
+      "std": 0.0033499323958488167
+    },
+    {
+      "feature": "range_log",
+      "importance": 0.0210078822118835,
+      "std": 0.004922178996682512
+    },
+    {
+      "feature": "is_rhinolophidae",
+      "importance": 0.017523268454857986,
+      "std": 0.0032779064030046593
+    },
+    {
+      "feature": "is_vespertilionidae",
+      "importance": 0.013866466915868814,
+      "std": 0.002179053252469659
+    },
+    {
+      "feature": "human_contact_frequency",
+      "importance": 0.012652883537340264,
+      "std": 0.0020541253069164497
+    },
+    {
+      "feature": "is_herbivore",
+      "importance": 0.011965105221813465,
+      "std": 0.0006935568592311476
+    },
+    {
+      "feature": "is_insectivore",
+      "importance": 0.011192692233796108,
+      "std": 0.0016605299479804398
+    },
+    {
+      "feature": "host_family",
+      "importance": 0.011118272090744008,
+      "std": 0.003953138911472135
+    },
+    {
+      "feature": "body_mass_sqrt",
+      "importance": 0.010503941105941795,
+      "std": 0.004095162945441284
+    },
+    {
+      "feature": "forest_habitat",
+      "importance": 0.01049372657650327,
+      "std": 0.002928608816716457
+    },
+    {
+      "feature": "lifespan_years",
+      "importance": 0.00974076983503549,
+      "std": 0.0024755117852034427
+    },
+    {
+      "feature": "body_mass_log",
+      "importance": 0.00941487770533036,
+      "std": 0.001968520899712483
+    },
+    {
+      "feature": "is_primate",
+      "importance": 0.00933656631296842,
+      "std": 0.0022676566267370987
+    },
+    {
+      "feature": "host_order",
+      "importance": 0.008877885300562638,
+      "std": 0.002940359497124743
+    },
+    {
+      "feature": "human_contact_score",
+      "importance": 0.00846735849836695,
+      "std": 0.005062316308711015
+    },
+    {
+      "feature": "contact_risk",
+      "importance": 0.00846735849836695,
+      "std": 0.005062316308711015
+    },
+    {
+      "feature": "geographic_range_km2",
+      "importance": 0.007667220359016525,
+      "std": 0.0019958659729256644
+    },
+    {
+      "feature": "baseline_risk",
+      "importance": 0.007663815515870276,
+      "std": 0.0020275993647863484
+    },
+    {
+      "feature": "combined_risk",
+      "importance": 0.007663815515870276,
+      "std": 0.0020275993647863484
+    }
+  ],
+  "experiment_6_per_species": {
+    "Homo_sapiens": {
+      "n": 43,
+      "true_rate": 0.6744,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3868,
+      "accuracy": 0.6744
+    },
+    "Papio_anubis": {
+      "n": 62,
+      "true_rate": 0.5968,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3774,
+      "accuracy": 0.5968
+    },
+    "Pan_troglodytes": {
+      "n": 60,
+      "true_rate": 0.5667,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3877,
+      "accuracy": 0.5667
+    },
+    "Gorilla_gorilla": {
+      "n": 54,
+      "true_rate": 0.5556,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3858,
+      "accuracy": 0.5556
+    },
+    "Eidolon_helvum": {
+      "n": 65,
+      "true_rate": 0.4462,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3821,
+      "accuracy": 0.4462
+    },
+    "Cercopithecus_ascanius": {
+      "n": 66,
+      "true_rate": 0.4394,
+      "pred_rate": 0.803,
+      "mean_prob": 0.3042,
+      "accuracy": 0.4545
+    },
+    "Hipposideros_ruber": {
+      "n": 78,
+      "true_rate": 0.4103,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3804,
+      "accuracy": 0.4103
+    },
+    "Myotis_myotis": {
+      "n": 54,
+      "true_rate": 0.3889,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3675,
+      "accuracy": 0.3889
+    },
+    "Pongo_pygmaeus": {
+      "n": 79,
+      "true_rate": 0.3418,
+      "pred_rate": 0.7848,
+      "mean_prob": 0.2865,
+      "accuracy": 0.4051
+    },
+    "Macaca_mulatta": {
+      "n": 57,
+      "true_rate": 0.3333,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3801,
+      "accuracy": 0.3333
+    },
+    "Pongo_abelii": {
+      "n": 63,
+      "true_rate": 0.3333,
+      "pred_rate": 0.8254,
+      "mean_prob": 0.2829,
+      "accuracy": 0.3492
+    },
+    "Equus_quagza": {
+      "n": 49,
+      "true_rate": 0.3265,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3525,
+      "accuracy": 0.3265
+    },
+    "Rousettus_aegyptiacus": {
+      "n": 59,
+      "true_rate": 0.2881,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3802,
+      "accuracy": 0.2881
+    },
+    "Giraffa_camelopardalis": {
+      "n": 55,
+      "true_rate": 0.2727,
+      "pred_rate": 0.8909,
+      "mean_prob": 0.3083,
+      "accuracy": 0.2727
+    },
+    "Ursus_arctos": {
+      "n": 60,
+      "true_rate": 0.25,
+      "pred_rate": 0.3,
+      "mean_prob": 0.2194,
+      "accuracy": 0.4833
+    },
+    "Cervus_elaphus": {
+      "n": 64,
+      "true_rate": 0.25,
+      "pred_rate": 0.0625,
+      "mean_prob": 0.169,
+      "accuracy": 0.75
+    },
+    "Panthera_leo": {
+      "n": 70,
+      "true_rate": 0.2429,
+      "pred_rate": 0.0571,
+      "mean_prob": 0.1698,
+      "accuracy": 0.7571
+    },
+    "Canis_lupus": {
+      "n": 56,
+      "true_rate": 0.2321,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1498,
+      "accuracy": 0.7679
+    },
+    "Ovis_aries": {
+      "n": 59,
+      "true_rate": 0.2203,
+      "pred_rate": 0.2373,
+      "mean_prob": 0.215,
+      "accuracy": 0.678
+    },
+    "Macaca_fascicularis": {
+      "n": 61,
+      "true_rate": 0.2131,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3814,
+      "accuracy": 0.2131
+    },
+    "Bos_taurus": {
+      "n": 57,
+      "true_rate": 0.2105,
+      "pred_rate": 0.1053,
+      "mean_prob": 0.1919,
+      "accuracy": 0.7544
+    },
+    "Hydrochoerus_hydrochaeris": {
+      "n": 60,
+      "true_rate": 0.1833,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1478,
+      "accuracy": 0.8167
+    },
+    "Loxodonta_africana": {
+      "n": 51,
+      "true_rate": 0.1765,
+      "pred_rate": 0.2549,
+      "mean_prob": 0.2103,
+      "accuracy": 0.6863
+    },
+    "Cricetus_cricetus": {
+      "n": 61,
+      "true_rate": 0.1639,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1439,
+      "accuracy": 0.8361
+    },
+    "Capra_aegagrus_hircus": {
+      "n": 62,
+      "true_rate": 0.1613,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1677,
+      "accuracy": 0.8387
+    },
+    "Panthera_tigris": {
+      "n": 57,
+      "true_rate": 0.1579,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1531,
+      "accuracy": 0.8421
+    },
+    "Mus_musculus": {
+      "n": 52,
+      "true_rate": 0.1538,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1437,
+      "accuracy": 0.8462
+    },
+    "Rhinolophus_ferrumequinum": {
+      "n": 57,
+      "true_rate": 0.1404,
+      "pred_rate": 0.0,
+      "mean_prob": 0.17,
+      "accuracy": 0.8596
+    },
+    "Pan_paniscus": {
+      "n": 66,
+      "true_rate": 0.1364,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3685,
+      "accuracy": 0.1364
+    },
+    "Rattus_norvegicus": {
+      "n": 66,
+      "true_rate": 0.1364,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1452,
+      "accuracy": 0.8636
+    },
+    "Mandrillus_sphinx": {
+      "n": 67,
+      "true_rate": 0.1343,
+      "pred_rate": 0.2239,
+      "mean_prob": 0.201,
+      "accuracy": 0.791
+    },
+    "Chlorocebus_aethiops": {
+      "n": 69,
+      "true_rate": 0.1304,
+      "pred_rate": 0.0,
+      "mean_prob": 0.156,
+      "accuracy": 0.8696
+    },
+    "Sus_scrofa": {
+      "n": 61,
+      "true_rate": 0.1148,
+      "pred_rate": 1.0,
+      "mean_prob": 0.3616,
+      "accuracy": 0.1148
+    },
+    "Gallus_gallus": {
+      "n": 74,
+      "true_rate": 0.1081,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1443,
+      "accuracy": 0.8919
+    },
+    "Felis_catus": {
+      "n": 52,
+      "true_rate": 0.0962,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1448,
+      "accuracy": 0.9038
+    },
+    "Nycteris_gambiensis": {
+      "n": 52,
+      "true_rate": 0.0962,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1436,
+      "accuracy": 0.9038
+    },
+    "Anas_platyrhynchos": {
+      "n": 76,
+      "true_rate": 0.0921,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1459,
+      "accuracy": 0.9079
+    },
+    "Procavia_capensis": {
+      "n": 62,
+      "true_rate": 0.0806,
+      "pred_rate": 0.0,
+      "mean_prob": 0.146,
+      "accuracy": 0.9194
+    },
+    "Tadarida_brasiliensis": {
+      "n": 66,
+      "true_rate": 0.0606,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1448,
+      "accuracy": 0.9394
+    },
+    "Canis_familiaris": {
+      "n": 50,
+      "true_rate": 0.06,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1423,
+      "accuracy": 0.94
+    },
+    "Molossus_molossus": {
+      "n": 68,
+      "true_rate": 0.0441,
+      "pred_rate": 0.0,
+      "mean_prob": 0.1452,
+      "accuracy": 0.9559
+    }
+  },
+  "experiment_7_identity_oracle": {
+    "species_rate_oracle_auc": 0.7054846134815292,
+    "species_rate_oracle_best_f1": 0.48166089965397924,
+    "species_rate_oracle_best_threshold": 0.26000000000000006,
+    "order_rate_oracle_auc": 0.6281188504848801,
+    "selected_model_auc": 0.6842015541690599,
+    "fraction_of_oracle_auc_gain_recovered": 0.8964250463727181
+  },
+  "confusion_matrix_best": {
+    "tn": 1222,
+    "fp": 675,
+    "fn": 219,
+    "tp": 384
+  },
+  "calibration_best": {
+    "mean_predicted": [
+      0.15112177964747323,
+      0.24718617984445068,
+      0.37037269178476967,
+      0.40711951055323986
+    ],
+    "observed_frequency": [
+      0.13854489164086686,
+      0.28434504792332266,
+      0.3673708920187793,
+      0.5116279069767442
+    ]
+  }
+}

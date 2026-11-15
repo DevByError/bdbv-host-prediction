@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BDBV Host Prediction System</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            background: #f8f9fa;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-button:hover {
+            background: #f0f0f0;
+        }
+
+        .tab-button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Testing Tab */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        .probability-bar {
+            width: 100%;
+            height: 30px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .probability-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            transition: width 0.5s ease;
+        }
+
+        /* Visualizations Tab */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.2em;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-card-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* Team Tab */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .team-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 5px solid #667eea;
+        }
+
+        .team-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .team-card .role {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .team-card .description {
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+
+        .project-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .project-info h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .project-info p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .info-box-content {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .species-dropdown {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .species-dropdown:hover {
+            border-color: #667eea;
+        }
+
+        .species-dropdown:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧬 BDBV Host Prediction System</h1>
+            <p>Advanced Machine Learning for Filovirus Susceptibility Prediction</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('testing')">🧪 Testing</button>
+            <button class="tab-button" onclick="switchTab('visualizations')">📊 Visualizations</button>
+            <button class="tab-button" onclick="switchTab('team')">👥 Team</button>
+        </div>
+
+        <!-- Testing Tab -->
+        <div id="testing" class="tab-content active">
+            <h2>🧬 Predict Animal Susceptibility</h2>
+
+            <div style="background: #f0f9ff; border-left: 4px solid #667eea; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p><strong>How to use:</strong> Select an animal from our database of 41 species, or enter custom characteristics for any unknown species.</p>
+            </div>
+
+            <!-- Mode Toggle -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="tab-button active" id="mode-database-btn" onclick="switchPredictionMode('database')" style="flex: 1; border: 2px solid #667eea;">📊 Database Species</button>
+                <button class="tab-button" id="mode-custom-btn" onclick="switchPredictionMode('custom')" style="flex: 1; border: 2px solid #eee;">✍️ Custom Features</button>
+            </div>
+
+            <!-- Database Mode -->
+            <div id="database-mode">
+                <div class="form-group">
+                    <label><strong>Select Species (41 available) *</strong></label>
+                    <select id="species-dropdown" class="species-dropdown" onchange="togglePredictButton()">
+                        <option value="">🔍 Search and select from database...</option>
+                    </select>
+                    <button class="button" style="background: #f59e0b; margin-top: 10px;" onclick="switchPredictionMode('custom')">
+                        Not in list? Enter custom features
+                    </button>
+                </div>
+                <button id="predict-database-btn" class="button" onclick="makePredictionDatabase()" style="display: none; margin-top: 20px;">Get Prediction</button>
+            </div>
+
+            <!-- Custom Mode -->
+            <div id="custom-mode" style="display: none;">
+                <div style="background: #f0f9ff; border-left: 4px solid #667eea; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p><strong>ℹ️ Info:</strong> System will compare with 20+ similar animals to estimate features and predict</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label><strong>Animal Group *</strong></label>
+                        <select id="animal-group">
+                            <option value="">Select animal group...</option>
+                            <option value="Mammals">🐒 Mammals</option>
+                            <option value="Birds">🐦 Birds</option>
+                            <option value="Reptiles">🐍 Reptiles</option>
+                            <option value="Amphibians">🐸 Amphibians</option>
+                            <option value="Fish">🐟 Fish</option>
+                            <option value="Insects">🐞 Insects</option>
+                            <option value="Arachnids">🕷️ Arachnids</option>
+                            <option value="Mollusks">🐙 Mollusks</option>
+                            <option value="Worms">🪱 Worms</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><strong>Animal Name *</strong></label>
+                        <input type="text" id="animal-name" placeholder="e.g., lion, eagle, python, dolphin...">
+                    </div>
+                </div>
+
+                <button class="button" onclick="makePredictionCustom()">Get Prediction</button>
+                <button class="button" style="background: #6b7280; margin-top: 10px;" onclick="switchPredictionMode('database')">Back to Database</button>
+            </div>
+
+            <!-- Results -->
+            <div id="result" class="result">
+                <div class="result-item">
+                    <div class="result-label">Species</div>
+                    <div class="result-value" id="result-species"></div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Prediction</div>
+                    <div class="result-value" id="result-prediction"></div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Susceptibility Probability</div>
+                    <div class="probability-bar">
+                        <div class="probability-fill" id="probability-fill"></div>
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Confidence</div>
+                    <div class="result-value" id="result-confidence"></div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Data Source</div>
+                    <div class="result-value" id="result-source"></div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Risk Category</div>
+                    <div class="result-value" id="result-risk"></div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">Reference Species</div>
+                    <div class="result-value" id="result-reference"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizations Tab -->
+        <div id="visualizations" class="tab-content">
+            <h2>Model Performance Analysis</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-value">41</div>
+                    <div class="stat-card-label">Species in Database</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value">10,000</div>
+                    <div class="stat-card-label">Training Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value">51</div>
+                    <div class="stat-card-label">Engineered Features</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value">68.4%</div>
+                    <div class="stat-card-label">Best ROC-AUC</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Model Accuracy Comparison</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="accuracyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>F1-Score Comparison</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="f1Chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>ROC-AUC Comparison</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="rocChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Precision vs Recall</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="precisionRecallChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="project-info">
+                <h3>📈 Performance Summary</h3>
+                <p><strong>Best Model:</strong> SVM with F1-Score of 0.462 and ROC-AUC of 0.684</p>
+                <p><strong>Dataset:</strong> 10,000 balanced records across 41 animal species</p>
+                <p><strong>Train/Test Split:</strong> 75% training (7,500 samples), 25% testing (2,500 samples)</p>
+                <p><strong>Cross-Validation:</strong> Stratified K-Fold with 5 folds</p>
+            </div>
+        </div>
+
+        <!-- Team Tab -->
+        <div id="team" class="tab-content">
+            <h2>About This Project</h2>
+
+            <div class="project-info">
+                <h3>🎯 Project Overview</h3>
+                <p>
+                    The BDBV Host Prediction System is an advanced machine learning solution designed to predict
+                    which animal species are susceptible to Filovirus infection (specifically Bundibugyo virus).
+                    Using biological, ecological, and behavioral features, the system provides accurate predictions
+                    for both known species in our database and unknown species through intelligent similarity matching.
+                </p>
+
+                <h3 style="margin-top: 20px;">🚀 Key Features</h3>
+                <div class="info-grid">
+                    <div class="info-box">
+                        <div class="info-box-title">41 Species Database</div>
+                        <div class="info-box-content">Comprehensive animal database with 10,000 training records</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-title">51 Features</div>
+                        <div class="info-box-content">Viral, host biology, behavior, and risk score features</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-title">SVM Model</div>
+                        <div class="info-box-content">68.4% ROC-AUC with 46.2% F1-Score</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-title">Similarity Matching</div>
+                        <div class="info-box-content">20-neighbor interpolation for unknown species</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-title">REST API</div>
+                        <div class="info-box-content">Flask-based web API for easy integration</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-box-title">Professional UI</div>
+                        <div class="info-box-content">Intuitive interface for predictions & analysis</div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 40px;">👥 Development Team</h2>
+
+            <div class="team-grid">
+                <div class="team-card">
+                    <h3>Project Lead</h3>
+                    <div class="role">Baranasr Mohamed (Cap)</div>
+                    <div class="description">
+                        Visionary leader and project architect. Defined system requirements,
+                        designed the prediction pipeline, and oversaw the complete development lifecycle.
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="project-info" style="margin-top: 40px;">
+                <h3>🔧 Technical Stack</h3>
+                <p><strong>Backend:</strong> Python 3.10, Flask, scikit-learn, XGBoost</p>
+                <p><strong>ML Models:</strong> SVM, Random Forest, XGBoost, Logistic Regression</p>
+                <p><strong>Frontend:</strong> HTML5, CSS3, JavaScript, Chart.js</p>
+                <p><strong>Data Storage:</strong> CSV (10k records), Pickle (models)</p>
+                <p><strong>Features:</strong> 51 engineered features spanning viral, host, behavioral, and ecological domains</p>
+            </div>
+
+            <div class="project-info">
+                <h3>📅 Project Timeline</h3>
+                <p><strong>Phase 1:</strong> System design, dataset generation, initial model development</p>
+                <p><strong>Phase 2:</strong> Feature engineering, model optimization, similarity matching implementation</p>
+                <p><strong>Phase 3:</strong> Web interface, API development, comprehensive testing</p>
+                <p><strong>Production:</strong> Critical bug fixes, documentation, deployment readiness</p>
+            </div>
+
+            <div class="project-info">
+                <h3>✅ Status & Deployment</h3>
+                <p><strong>Current Status:</strong> Production Ready</p>
+                <p><strong>System Health:</strong> All systems operational ✓</p>
+                <p><strong>Last Updated:</strong> 2026-08-11</p>
+                <p><strong>Bug Fixes:</strong> Critical feature scaling issue resolved - predictions now vary correctly by species</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load species list on page load
+        window.addEventListener('load', function() {
+            loadSpeciesList();
+        });
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Deactivate all tab buttons
+            document.querySelectorAll('.tabs .tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Initialize charts when visualizations tab is opened
+            if (tabName === 'visualizations') {
+                setTimeout(initializeCharts, 100);
+            }
+        }
+
+        function switchPredictionMode(mode) {
+            const databaseMode = document.getElementById('database-mode');
+            const customMode = document.getElementById('custom-mode');
+            const databaseBtn = document.getElementById('mode-database-btn');
+            const customBtn = document.getElementById('mode-custom-btn');
+
+            if (mode === 'database') {
+                databaseMode.style.display = 'block';
+                customMode.style.display = 'none';
+                databaseBtn.classList.add('active');
+                customBtn.classList.remove('active');
+                databaseBtn.style.borderColor = '#667eea';
+                customBtn.style.borderColor = '#eee';
+            } else {
+                databaseMode.style.display = 'none';
+                customMode.style.display = 'block';
+                databaseBtn.classList.remove('active');
+                customBtn.classList.add('active');
+                databaseBtn.style.borderColor = '#eee';
+                customBtn.style.borderColor = '#667eea';
+            }
+        }
+
+        function loadSpeciesList() {
+            axios.get('/api/species/list?limit=1000')
+                .then(response => {
+                    const species = response.data.species;
+                    const dropdown = document.getElementById('species-dropdown');
+                    species.forEach(sp => {
+                        const option = document.createElement('option');
+                        option.value = sp;
+                        option.textContent = sp.replace(/_/g, ' ');
+                        dropdown.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading species:', error));
+        }
+
+        function togglePredictButton() {
+            const selected = document.getElementById('species-dropdown').value;
+            const btn = document.getElementById('predict-database-btn');
+            btn.style.display = selected ? 'block' : 'none';
+        }
+
+        function makePredictionDatabase() {
+            const species = document.getElementById('species-dropdown').value;
+            if (!species) {
+                alert('Please select a species');
+                return;
+            }
+            makePrediction(species);
+        }
+
+        function makePredictionCustom() {
+            const group = document.getElementById('animal-group').value;
+            const name = document.getElementById('animal-name').value.trim();
+
+            if (!group || !name) {
+                alert('Please enter both animal group and name');
+                return;
+            }
+
+            makePrediction(`${name}_${group}`);
+        }
+
+        function makePrediction(species) {
+            const data = { species: species };
+
+            axios.post('/api/predict', data)
+                .then(response => {
+                    const result = response.data;
+                    displayResult(result);
+                })
+                .catch(error => {
+                    alert('Error: ' + (error.response?.data?.error || error.message));
+                });
+        }
+
+        function displayResult(result) {
+            const probability = result.probability * 100;
+
+            document.getElementById('result-species').textContent = result.species;
+            document.getElementById('result-prediction').textContent = result.prediction;
+            document.getElementById('result-confidence').textContent =
+                (result.confidence * 100).toFixed(1) + '%';
+            document.getElementById('result-source').textContent =
+                result.source.charAt(0).toUpperCase() + result.source.slice(1);
+            document.getElementById('result-risk').textContent = result.risk_category;
+            document.getElementById('result-reference').textContent =
+                result.reference_species?.join(', ') || 'N/A';
+
+            const probabilityFill = document.getElementById('probability-fill');
+            probabilityFill.style.width = probability + '%';
+            probabilityFill.textContent = probability.toFixed(1) + '%';
+
+            document.getElementById('result').classList.add('show');
+        }
+
+        function initializeCharts() {
+            const ctx1 = document.getElementById('accuracyChart')?.getContext('2d');
+            const ctx2 = document.getElementById('f1Chart')?.getContext('2d');
+            const ctx3 = document.getElementById('rocChart')?.getContext('2d');
+            const ctx4 = document.getElementById('precisionRecallChart')?.getContext('2d');
+
+            if (!ctx1) return;
+
+            // Model data
+            const models = ['SVM', 'XGBoost', 'RandomForest', 'LogisticRegression'];
+            const accuracy = [0.642, 0.764, 0.763, 0.602];
+            const f1 = [0.462, 0.261, 0.231, 0.442];
+            const roc = [0.684, 0.677, 0.661, 0.670];
+            const precision = [0.363, 0.538, 0.509, 0.334];
+            const recall = [0.637, 0.141, 0.139, 0.653];
+
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe'];
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { font: { size: 12 } } }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 1 }
+                }
+            };
+
+            // Accuracy Chart
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: models,
+                    datasets: [{
+                        label: 'Accuracy',
+                        data: accuracy,
+                        backgroundColor: colors
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // F1-Score Chart
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: models,
+                    datasets: [{
+                        label: 'F1-Score',
+                        data: f1,
+                        backgroundColor: colors
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // ROC-AUC Chart
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: models,
+                    datasets: [{
+                        label: 'ROC-AUC',
+                        data: roc,
+                        backgroundColor: colors
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Precision vs Recall
+            new Chart(ctx4, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'SVM',
+                            data: [{x: precision[0], y: recall[0]}],
+                            backgroundColor: colors[0]
+                        },
+                        {
+                            label: 'XGBoost',
+                            data: [{x: precision[1], y: recall[1]}],
+                            backgroundColor: colors[1]
+                        },
+                        {
+                            label: 'RandomForest',
+                            data: [{x: precision[2], y: recall[2]}],
+                            backgroundColor: colors[2]
+                        },
+                        {
+                            label: 'LogisticRegression',
+                            data: [{x: precision[3], y: recall[3]}],
+                            backgroundColor: colors[3]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { min: 0, max: 1, title: { display: true, text: 'Precision' } },
+                        y: { min: 0, max: 1, title: { display: true, text: 'Recall' } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

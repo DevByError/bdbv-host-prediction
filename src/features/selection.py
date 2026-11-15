@@ -1,6 +1,4 @@
-"""
-Feature selection methods for dimensionality reduction.
-"""
+"""Feature selection."""
 
 import numpy as np
 import pandas as pd
@@ -23,16 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class FeatureSelector:
-    """
-    Advanced feature selection with multiple methods.
-
-    Methods:
-    - Variance threshold
-    - Univariate selection (f-test, mutual information)
-    - Recursive feature elimination
-    - Model-based selection
-    - Correlation-based selection
-    """
+    """Each method returns the kept column names; nothing is stateful except
+    random_state."""
 
     def __init__(self, random_state: int = 42):
         self.random_state = random_state
@@ -40,16 +30,6 @@ class FeatureSelector:
         self.selector = None
 
     def variance_threshold(self, X: pd.DataFrame, threshold: float = 0.01) -> List[str]:
-        """
-        Remove features with low variance.
-
-        Args:
-            X: Features
-            threshold: Variance threshold
-
-        Returns:
-            List[str]: Selected feature names
-        """
         logger.info(f"Applying variance threshold: {threshold}")
 
         selector = VarianceThreshold(threshold=threshold)
@@ -69,22 +49,10 @@ class FeatureSelector:
         n_features: Optional[int] = None,
         percentile: Optional[int] = None,
     ) -> List[str]:
-        """
-        Univariate feature selection.
-
-        Args:
-            X: Features
-            y: Labels
-            method: 'mutual_info', 'f_classif', 'chi2'
-            n_features: Number of features to select
-            percentile: Percentile of features to select
-
-        Returns:
-            List[str]: Selected feature names
-        """
+        """method is mutual_info, f_classif or chi2 (chi2 needs non-negative X).
+        With neither n_features nor percentile, keeps the top 20."""
         logger.info(f"Applying univariate selection: {method}")
 
-        # Choose scoring function
         if method == "mutual_info":
             score_func = mutual_info_classif
         elif method == "f_classif":
@@ -94,7 +62,6 @@ class FeatureSelector:
         else:
             raise ValueError(f"Unknown method: {method}")
 
-        # Select selector
         if n_features is not None:
             selector = SelectKBest(score_func=score_func, k=n_features)
         elif percentile is not None:
@@ -117,18 +84,7 @@ class FeatureSelector:
         n_features: Optional[int] = None,
         estimator=None,
     ) -> List[str]:
-        """
-        Recursive Feature Elimination.
-
-        Args:
-            X: Features
-            y: Labels
-            n_features: Number of features to select
-            estimator: Estimator for RFE
-
-        Returns:
-            List[str]: Selected feature names
-        """
+        """Defaults to a 50-tree random forest and half the columns."""
         logger.info("Applying recursive feature elimination")
 
         if estimator is None:
@@ -155,18 +111,8 @@ class FeatureSelector:
         threshold: Optional[str] = None,
         estimator=None,
     ) -> List[str]:
-        """
-        Model-based feature selection.
-
-        Args:
-            X: Features
-            y: Labels
-            threshold: Threshold for selection
-            estimator: Estimator with feature_importances_
-
-        Returns:
-            List[str]: Selected feature names
-        """
+        """estimator needs feature_importances_ or coef_. threshold=None lets
+        SelectFromModel use the mean importance."""
         logger.info("Applying model-based selection")
 
         if estimator is None:
@@ -186,25 +132,14 @@ class FeatureSelector:
     def correlation_based_selection(
         self, X: pd.DataFrame, threshold: float = 0.9
     ) -> List[str]:
-        """
-        Remove features with high correlation.
-
-        Args:
-            X: Features
-            threshold: Correlation threshold
-
-        Returns:
-            List[str]: Selected feature names
-        """
+        """Of each correlated pair the later column gets dropped - upper
+        triangle only, so the first occurrence survives."""
         logger.info(f"Removing correlated features (threshold: {threshold})")
 
-        # Calculate correlation matrix
         corr_matrix = X.corr().abs()
 
-        # Select upper triangle
         upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
-        # Find features with correlation above threshold
         to_drop = [column for column in upper.columns if any(upper[column] > threshold)]
 
         selected = [col for col in X.columns if col not in to_drop]
@@ -217,17 +152,7 @@ class FeatureSelector:
     def get_feature_scores(
         self, X: pd.DataFrame, y: np.ndarray, method: str = "mutual_info"
     ) -> pd.DataFrame:
-        """
-        Get feature importance scores.
-
-        Args:
-            X: Features
-            y: Labels
-            method: Scoring method
-
-        Returns:
-            pd.DataFrame: Feature scores
-        """
+        """Columns: feature, score. Sorted descending."""
         if method == "mutual_info":
             scores = mutual_info_classif(X, y)
         elif method == "f_classif":
@@ -248,18 +173,8 @@ class FeatureSelector:
         methods: List[str] = None,
         n_features: Optional[int] = None,
     ) -> List[str]:
-        """
-        Combine multiple feature selection methods.
-
-        Args:
-            X: Features
-            y: Labels
-            methods: List of methods to apply
-            n_features: Number of features to select
-
-        Returns:
-            List[str]: Selected feature names
-        """
+        """Intersection of the methods, then trimmed to n_features by MI score
+        if still too many."""
         if methods is None:
             methods = ["variance", "correlation", "univariate"]
 
@@ -283,7 +198,6 @@ class FeatureSelector:
         selected = list(all_selected)
 
         if n_features and len(selected) > n_features:
-            # Get top features by importance
             scores = self.get_feature_scores(X[selected], y)
             selected = scores.head(n_features)["feature"].tolist()
 

@@ -1,6 +1,4 @@
-"""
-Publication-quality figure generation.
-"""
+"""Builds the numbered figures for the manuscript."""
 
 import numpy as np
 import pandas as pd
@@ -25,27 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 class FigureGenerator:
-    """
-    Generate publication-quality figures for BDBV host prediction.
-    """
-
     def __init__(
         self, results: Dict, best_model_name: str, output_dir: Optional[Path] = None
     ):
-        """
-        Initialize figure generator.
-
-        Args:
-            results: Model evaluation results
-            best_model_name: Name of best model
-            output_dir: Directory to save figures
-        """
         self.results = results
         self.best_model_name = best_model_name
         self.output_dir = output_dir or Path("results/figures")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Colorblind-friendly palette
+        # colourblind-safe, matches styles.FigureStyle
         self.colors = {
             "primary": "#2E86AB",
             "secondary": "#A23B72",
@@ -69,8 +55,8 @@ class FigureGenerator:
             ]
         )
 
-        # Set high-quality defaults
         plt.rcParams["font.family"] = "Arial"
+        # keep text editable in the vector output
         plt.rcParams["pdf.fonttype"] = 42
         plt.rcParams["ps.fonttype"] = 42
         plt.rcParams["figure.dpi"] = 300
@@ -83,48 +69,28 @@ class FigureGenerator:
         y_train: np.ndarray,
         y_test: np.ndarray,
     ):
-        """
-        Generate all publication figures.
-        """
         logger.info("Generating all publication figures...")
 
-        # Figure 1: Model Performance Comparison
         self.fig1_model_performance()
-
-        # Figure 2: Confusion Matrix
         self.fig2_confusion_matrix(X_test, y_test)
-
-        # Figure 3: ROC Curves
         self.fig3_roc_curves(X_test, y_test)
-
-        # Figure 4: Feature Importance
         self.fig4_feature_importance(X_test)
-
-        # Figure 5: PR Curves
         self.fig5_pr_curves(X_test, y_test)
-
-        # Figure 6: SHAP Summary
         self.fig6_shap_summary()
-
-        # Figure 7: Learning Curves
         self.fig7_learning_curves(X_train, y_train)
-
-        # Figure 8: Risk Prediction
         self.fig8_risk_prediction()
 
         logger.info(f"All figures saved to {self.output_dir}")
 
     def fig1_model_performance(self):
-        """Figure 1: Model performance comparison."""
+        """Bars plus a metric heatmap, side by side."""
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-        # Extract data
         model_names = list(self.results.keys())
         accuracy = [self.results[m]["accuracy"] for m in model_names]
         f1_scores = [self.results[m]["f1"] for m in model_names]
         roc_auc = [self.results[m].get("roc_auc", 0) for m in model_names]
 
-        # Bar chart
         x = np.arange(len(model_names))
         width = 0.25
 
@@ -156,7 +122,6 @@ class FigureGenerator:
             linewidth=1.5,
         )
 
-        # Add value labels
         for bars in [bars1, bars2, bars3]:
             for bar in bars:
                 height = bar.get_height()
@@ -179,7 +144,7 @@ class FigureGenerator:
         ax1.legend(loc="lower right", frameon=True, fancybox=True)
         ax1.grid(True, alpha=0.2, axis="y")
 
-        # Best model annotation
+        # we rank on F1, not accuracy, the classes are unbalanced
         best_idx = np.argmax(f1_scores)
         ax1.text(
             0.02,
@@ -191,7 +156,6 @@ class FigureGenerator:
             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.8),
         )
 
-        # Heatmap of metrics
         metrics_df = pd.DataFrame(
             {
                 "Model": model_names,
@@ -228,20 +192,16 @@ class FigureGenerator:
         logger.info("Figure 1 saved")
 
     def fig2_confusion_matrix(self, X_test: pd.DataFrame, y_test: np.ndarray):
-        """Figure 2: Confusion matrix for best model."""
-        # Use the wrapper model directly - it handles feature names
+        # wrapper rather than the raw estimator, it keeps the feature names
         best_model = self.results[self.best_model_name]["model"]
-
-        # Use the wrapper's predict method
         y_pred = best_model.predict(X_test)
 
         fig, ax = plt.subplots(figsize=(8, 7))
 
-        # Confusion matrix
         cm = confusion_matrix(y_test, y_pred)
         cm_percent = cm.astype("float") / cm.sum() * 100
 
-        # Annotate with both counts and percentages
+        # cells carry count and percentage
         annotations = np.empty_like(cm, dtype=object)
         for i in range(cm.shape[0]):
             for j in range(cm.shape[1]):
@@ -270,7 +230,6 @@ class FigureGenerator:
             f"Confusion Matrix: {self.best_model_name}", fontsize=14, fontweight="bold"
         )
 
-        # Add metrics text box
         metrics_text = (
             f"Accuracy: {self.results[self.best_model_name]['accuracy']:.2%}\n"
             f"Precision: {self.results[self.best_model_name]['precision']:.2%}\n"
@@ -302,7 +261,6 @@ class FigureGenerator:
         logger.info("Figure 2 saved")
 
     def fig3_roc_curves(self, X_test: pd.DataFrame, y_test: np.ndarray):
-        """Figure 3: ROC curves for all models."""
         fig, ax = plt.subplots(figsize=(10, 8))
 
         colors = [
@@ -314,10 +272,8 @@ class FigureGenerator:
         linestyles = ["-", "--", "-.", ":"]
 
         for i, (name, results) in enumerate(self.results.items()):
-            # Use the wrapper model directly
             model = results["model"]
 
-            # Check if the wrapper has predict_proba
             if hasattr(model, "predict_proba"):
                 y_prob = model.predict_proba(X_test)[:, 1]
                 fpr, tpr, _ = roc_curve(y_test, y_prob)
@@ -332,7 +288,7 @@ class FigureGenerator:
                     label=f"{name} (AUC = {roc_auc:.3f})",
                 )
 
-        # Random classifier
+        # diagonal
         ax.plot(
             [0, 1],
             [0, 1],
@@ -364,25 +320,22 @@ class FigureGenerator:
         logger.info("Figure 3 saved")
 
     def fig4_feature_importance(self, X_test: pd.DataFrame):
-        """Figure 4: Feature importance."""
         best_model_wrapper = self.results[self.best_model_name]["model"]
 
-        # Access the underlying model for feature importance
         if hasattr(best_model_wrapper, "model"):
             model = best_model_wrapper.model
         else:
             model = best_model_wrapper
 
-        # Get feature importance
         if hasattr(model, "feature_importances_"):
             importance = model.feature_importances_
         elif hasattr(model, "coef_"):
+            # linear models: |coef| is the closest thing we get
             importance = np.abs(model.coef_[0])
         else:
             logger.warning("No feature importance available")
             return
 
-        # Get feature names from the wrapper (or from X_test)
         if hasattr(best_model_wrapper, "feature_names_in_"):
             feature_names = best_model_wrapper.feature_names_in_.tolist()
         elif hasattr(X_test, "columns"):
@@ -390,7 +343,7 @@ class FigureGenerator:
         else:
             feature_names = [f"Feature_{i}" for i in range(len(importance))]
 
-        # Ensure importance and feature_names match
+        # lengths drift when a transformer drops columns, pad or trim
         if len(importance) != len(feature_names):
             if len(importance) < len(feature_names):
                 importance = np.pad(
@@ -399,12 +352,10 @@ class FigureGenerator:
             else:
                 importance = importance[: len(feature_names)]
 
-        # Create DataFrame
         imp_df = pd.DataFrame(
             {"feature": feature_names, "importance": importance}
         ).sort_values("importance", ascending=True)
 
-        # Top features
         n_features = min(20, len(imp_df))
         if n_features == 0:
             logger.warning("No features available for importance plot")
@@ -453,7 +404,6 @@ class FigureGenerator:
         logger.info("Figure 4 saved")
 
     def fig5_pr_curves(self, X_test: pd.DataFrame, y_test: np.ndarray):
-        """Figure 5: Precision-Recall curves."""
         fig, ax = plt.subplots(figsize=(10, 8))
 
         colors = [
@@ -464,7 +414,6 @@ class FigureGenerator:
         ]
 
         for i, (name, results) in enumerate(self.results.items()):
-            # Use the wrapper model directly
             model = results["model"]
 
             if hasattr(model, "predict_proba"):
@@ -496,12 +445,9 @@ class FigureGenerator:
         logger.info("Figure 5 saved")
 
     def fig6_shap_summary(self):
-        """Figure 6: SHAP summary plot."""
-        # This would use the SHAP analyzer
-        # Placeholder figure
+        """Placeholder, still dummy numbers rather than real SHAP output."""
         fig, ax = plt.subplots(figsize=(10, 8))
 
-        # Simulate SHAP-like plot
         features = ["Feature 1", "Feature 2", "Feature 3", "Feature 4", "Feature 5"]
         importance = [0.15, 0.12, 0.10, 0.08, 0.06]
 
@@ -533,19 +479,16 @@ class FigureGenerator:
         logger.info("Figure 6 saved")
 
     def fig7_learning_curves(self, X_train: pd.DataFrame, y_train: np.ndarray):
-        """Figure 7: Learning curves."""
+        """Placeholder, the curves are synthetic rather than from a sweep."""
         fig, ax = plt.subplots(figsize=(10, 8))
 
-        # Simulate learning curves
         train_sizes = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
         train_scores = 0.7 + 0.25 * (1 - np.exp(-3 * train_sizes))
         val_scores = 0.5 + 0.35 * (1 - np.exp(-2 * train_sizes))
 
-        # Add noise
         train_scores += np.random.normal(0, 0.02, len(train_scores))
         val_scores += np.random.normal(0, 0.03, len(val_scores))
 
-        # Clip
         train_scores = np.clip(train_scores, 0, 1)
         val_scores = np.clip(val_scores, 0, 1)
 
@@ -585,10 +528,9 @@ class FigureGenerator:
         logger.info("Figure 7 saved")
 
     def fig8_risk_prediction(self):
-        """Figure 8: Risk prediction visualization."""
+        """Placeholder, the species scores below are hardcoded examples."""
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-        # Simulate risk predictions for different species
         species = [
             "Rousettus aegyptiacus",
             "Eidolon helvum",
@@ -605,7 +547,6 @@ class FigureGenerator:
         ci_lower = [0.85, 0.80, 0.78, 0.75, 0.55, 0.48, 0.18, 0.14, 0.10]
         ci_upper = [0.97, 0.94, 0.91, 0.88, 0.74, 0.67, 0.32, 0.27, 0.21]
 
-        # Sort by risk
         sorted_indices = np.argsort(risks)[::-1]
         species_sorted = [species[i] for i in sorted_indices]
         risks_sorted = [risks[i] for i in sorted_indices]
@@ -614,7 +555,6 @@ class FigureGenerator:
 
         y_pos = np.arange(len(species_sorted))
 
-        # Color by risk category
         colors = []
         for risk in risks_sorted:
             if risk > 0.8:
@@ -633,12 +573,11 @@ class FigureGenerator:
             height=0.6,
         )
 
-        # Add error bars - FIXED: convert to numpy arrays
         risks_array = np.array(risks_sorted)
         ci_lower_array = np.array(ci_lower_sorted)
         ci_upper_array = np.array(ci_upper_sorted)
 
-        # Calculate errors correctly
+        # errorbar wants offsets from the point, not absolute bounds
         lower_errors = risks_array - ci_lower_array
         upper_errors = ci_upper_array - risks_array
 
@@ -652,7 +591,6 @@ class FigureGenerator:
             elinewidth=1.5,
         )
 
-        # Add value labels
         for bar, risk in zip(bars, risks_sorted):
             ax1.text(
                 risk + 0.02,
@@ -688,7 +626,6 @@ class FigureGenerator:
         ]
         ax1.legend(handles=legend_elements, loc="lower right", frameon=True)
 
-        # Pie chart of risk distribution
         risk_counts = {
             "High": sum(1 for r in risks_sorted if r > 0.8),
             "Medium": sum(1 for r in risks_sorted if 0.5 <= r <= 0.8),
@@ -711,7 +648,6 @@ class FigureGenerator:
             explode=(0.05, 0.02, 0.02),
         )
 
-        # Add count labels
         for i, (label, count) in enumerate(
             zip(risk_counts.keys(), risk_counts.values())
         ):

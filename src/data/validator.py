@@ -1,6 +1,4 @@
-"""
-Data validation for quality control.
-"""
+"""Data quality checks."""
 
 import pandas as pd
 import numpy as np
@@ -11,36 +9,18 @@ logger = logging.getLogger(__name__)
 
 
 class DataValidator:
-    """
-    Validates data integrity, completeness, and quality.
-
-    Checks:
-    - Missing values
-    - Duplicate rows
-    - Class balance
-    - Outliers
-    - Data types
-    - Feature correlations
-    """
+    """Missing values, duplicates, class balance, outliers, correlations."""
 
     def __init__(self):
         self.results = {}
 
     def validate(self, df: pd.DataFrame) -> Dict:
-        """
-        Perform comprehensive data validation.
-
-        Args:
-            df: DataFrame to validate
-
-        Returns:
-            Dict: Validation results
-        """
+        """Returns {valid, warnings, errors, statistics}. Only errors flip
+        valid to False; warnings are informational."""
         logger.info("Validating data...")
 
         results = {"valid": True, "warnings": [], "errors": [], "statistics": {}}
 
-        # 1. Check for required columns
         required_cols = ["virus_species", "host_species", "infection_status"]
         missing_cols = [col for col in required_cols if col not in df.columns]
 
@@ -49,14 +29,12 @@ class DataValidator:
             results["errors"].append(f"Missing required columns: {missing_cols}")
             return results
 
-        # 2. Check sample size
         n_samples = len(df)
         results["statistics"]["n_samples"] = n_samples
 
         if n_samples < 50:
             results["warnings"].append(f"Small sample size: {n_samples} samples")
 
-        # 3. Check class balance
         if "infection_status" in df.columns:
             n_positive = df["infection_status"].sum()
             n_negative = n_samples - n_positive
@@ -75,7 +53,6 @@ class DataValidator:
                     f"Moderate class imbalance: {balance:.1%} positive"
                 )
 
-        # 4. Check missing values
         missing_counts = df.isnull().sum()
         missing_cols = missing_counts[missing_counts > 0]
 
@@ -85,7 +62,6 @@ class DataValidator:
                 f"Missing values in columns: {list(missing_cols.index)}"
             )
 
-            # Check for high missingness (>50%)
             high_missing = missing_cols[missing_cols > len(df) * 0.5]
             if len(high_missing) > 0:
                 results["errors"].append(
@@ -93,13 +69,11 @@ class DataValidator:
                 )
                 results["valid"] = False
 
-        # 5. Check duplicates
         duplicates = df.duplicated().sum()
         if duplicates > 0:
             results["statistics"]["duplicates"] = duplicates
             results["warnings"].append(f"Found {duplicates} duplicate rows")
 
-        # 6. Check outliers in numerical columns
         numerical_cols = df.select_dtypes(include=[np.number]).columns
         outlier_cols = []
 
@@ -107,7 +81,7 @@ class DataValidator:
             if col == "infection_status":
                 continue
 
-            # Use IQR method
+            # IQR, but 3x instead of the usual 1.5x - only want the wild ones
             Q1 = df[col].quantile(0.25)
             Q3 = df[col].quantile(0.75)
             IQR = Q3 - Q1
@@ -124,7 +98,6 @@ class DataValidator:
                 f"Outliers detected in: {[col for col, _ in outlier_cols]}"
             )
 
-        # 7. Check feature correlations (if enough columns)
         if len(numerical_cols) > 1:
             corr_matrix = df[numerical_cols].corr().abs()
             upper_tri = corr_matrix.where(
@@ -137,12 +110,10 @@ class DataValidator:
                     f"High correlations (>0.9) detected: {high_corr}"
                 )
 
-        # 8. Check virus distribution
         if "virus_species" in df.columns:
             virus_counts = df["virus_species"].value_counts()
             results["statistics"]["virus_distribution"] = virus_counts.to_dict()
 
-            # Check BDBV representation
             if "BDBV" in virus_counts:
                 bdbv_count = virus_counts["BDBV"]
                 if bdbv_count < 10:
@@ -165,21 +136,15 @@ class DataValidator:
         return results
 
     def validate_for_bdbv(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
-        """
-        Specialized validation for BDBV analysis.
-
-        Returns:
-            Tuple[bool, List[str]]: (is_valid, error_messages)
-        """
+        """Returns (is_valid, error_messages)."""
         errors = []
 
-        # Check BDBV samples
         bdbv_mask = df["virus_species"] == "BDBV"
         if not bdbv_mask.any():
             errors.append("No BDBV samples found in dataset")
             return False, errors
 
-        # Check BDBV features
+        # these assays only exist for BDBV rows, so check them on the mask
         required_bdbv_features = ["bdbv_gp_binding_affinity", "bdbv_npc1_residue_match"]
 
         for feature in required_bdbv_features:

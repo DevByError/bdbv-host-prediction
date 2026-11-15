@@ -13,8 +13,11 @@ from .ensemble import EnsembleModel
 from .hyperparameter import HyperparameterOptimizer
 from .trainer import ModelTrainer
 
-# Temporarily disable GNN due to torch DLL issues
-# from .gnn import GNNModel
+# GNNModel requires torch + torch_geometric, both optional heavy
+# dependencies. Importing gnn.py itself never raises (it guards its own
+# torch import internally and only raises ImportError when GNNModel is
+# instantiated), so this import is always safe.
+from .gnn import GNNModel, TORCH_AVAILABLE
 
 __all__ = [
     "BaseModel",
@@ -23,7 +26,8 @@ __all__ = [
     "LogisticRegressionModel",
     "SVMModel",
     "EnsembleModel",
-    # "GNNModel",  # Temporarily disabled
+    "GNNModel",
+    "TORCH_AVAILABLE",
     "HyperparameterOptimizer",
     "ModelTrainer",
 ]

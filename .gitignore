@@ -2,13 +2,27 @@ venv/
 __pycache__/
 *.pyc
 .pytest_cache/
-results/
 logs/
 *.egg-info/
 .coverage
 htmlcov/
 .DS_Store
+
+# local env, don't commit
+.env
+
+# stray output dir from running a script with the wrong cwd
+scripts/results/
+
+# results: keep the reported numbers, not the 25MB of pickles
+results/*
+!results/model_performance.csv
+!results/paper_metrics.json
+
+# data: keep the dataset the README is written against
 data/raw/*
 data/processed/*
 data/external/*
 !data/raw/.gitkeep
+!data/raw/filovirus_data_template.csv
+!data/raw/species_list.txt

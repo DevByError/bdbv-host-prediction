@@ -1,6 +1,4 @@
-"""
-Biological feature calculation from sequences.
-"""
+"""Sequence-derived features."""
 
 import numpy as np
 from typing import Dict, List, Optional, Tuple
@@ -10,13 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class BiologicalFeatures:
-    """
-    Calculate biological features from sequence data.
-    """
-
     @staticmethod
     def calculate_gc_content(sequence: str) -> float:
-        """Calculate GC content of a sequence."""
+        """Percent, not fraction."""
         if not sequence:
             return 0.0
         gc_count = sequence.count("G") + sequence.count("C")
@@ -24,7 +18,7 @@ class BiologicalFeatures:
 
     @staticmethod
     def calculate_cpg_frequency(sequence: str) -> float:
-        """Calculate CpG dinucleotide frequency."""
+        """CpG dinucleotides per position (fraction)."""
         if len(sequence) < 2:
             return 0.0
 
@@ -35,33 +29,20 @@ class BiologicalFeatures:
 
     @staticmethod
     def calculate_codon_usage(sequence: str, host_codon_table: Dict) -> Dict:
-        """
-        Calculate codon usage indices.
-
-        Args:
-            sequence: DNA sequence
-            host_codon_table: Codon frequency table for host
-
-        Returns:
-            Dict: Codon usage metrics
-        """
-        # Count codons in sequence
+        """Rough ENC/CAI/RSCU summary. See codon_analysis.py for the real
+        versions - these are crude stand-ins."""
         codons = [sequence[i : i + 3].upper() for i in range(0, len(sequence) - 2, 3)]
 
-        # RSCU (Relative Synonymous Codon Usage)
         codon_counts = {}
         for codon in codons:
             if len(codon) == 3:
                 codon_counts[codon] = codon_counts.get(codon, 0) + 1
 
-        # ENC (Effective Number of Codons)
-        # Simplified calculation
         if len(codon_counts) > 0:
             enc_value = len(codon_counts) / len(codons) if codons else 0
         else:
             enc_value = 0
 
-        # CAI (Codon Adaptation Index) - simplified
         if host_codon_table:
             cai_sum = 0
             for codon, count in codon_counts.items():
@@ -80,31 +61,22 @@ class BiologicalFeatures:
 
     @staticmethod
     def calculate_protein_features(protein_sequence: str) -> Dict:
-        """
-        Calculate protein features from amino acid sequence.
-
-        Args:
-            protein_sequence: Amino acid sequence
-
-        Returns:
-            Dict: Protein features
-        """
+        """Composition ratios plus hydrophobicity, aliphatic and instability
+        indices. Empty dict for an empty sequence."""
         if not protein_sequence:
             return {}
 
-        # Amino acid properties
         hydrophobic_aa = ["A", "I", "L", "M", "F", "W", "V", "P", "G"]
         charged_aa = ["R", "H", "K", "D", "E"]
         polar_aa = ["S", "T", "Y", "C", "N", "Q"]
 
-        # Calculate composition
         n_residues = len(protein_sequence)
 
         hydrophobic_count = sum(1 for aa in protein_sequence if aa in hydrophobic_aa)
         charged_count = sum(1 for aa in protein_sequence if aa in charged_aa)
         polar_count = sum(1 for aa in protein_sequence if aa in polar_aa)
 
-        # Hydrophobicity score (simplified Kyte-Doolittle)
+        # Kyte-Doolittle
         hydrophobicity_values = {
             "A": 1.8,
             "R": -4.5,
@@ -132,13 +104,15 @@ class BiologicalFeatures:
             [hydrophobicity_values.get(aa, 0) for aa in protein_sequence]
         )
 
-        # Aliphatic index
         aliphatic_aa = ["A", "I", "L", "V"]
         aliphatic_count = sum(1 for aa in protein_sequence if aa in aliphatic_aa)
         aliphatic_index = aliphatic_count / n_residues * 100
 
-        # Instability index (simplified)
-        instability = np.random.normal(40, 8)  # Placeholder
+        # local import, protein_analysis imports nothing from here but keep it
+        # lazy anyway
+        from src.features.protein_analysis import ProteinAnalyzer
+
+        instability = ProteinAnalyzer._calculate_instability_index(protein_sequence)
 
         return {
             "hydrophobicity": hydrophobicity,
@@ -152,17 +126,8 @@ class BiologicalFeatures:
 
     @staticmethod
     def calculate_phylogenetic_distance(seq1: str, seq2: str) -> float:
-        """
-        Calculate phylogenetic distance between sequences.
-
-        Args:
-            seq1: First sequence
-            seq2: Second sequence
-
-        Returns:
-            float: Distance metric
-        """
-        # Simple Hamming distance
+        """Normalised Hamming distance; 1.0 if the lengths differ (no alignment
+        step here)."""
         if len(seq1) != len(seq2):
             return 1.0
 

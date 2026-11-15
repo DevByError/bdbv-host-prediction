@@ -1,0 +1,10 @@
+# Web Application Requirements
+Flask==2.3.3
+Flask-CORS==4.0.0
+Werkzeug==2.3.7
+
+# These should already be installed from main requirements.txt
+# scikit-learn
+# numpy
+# pandas
+# pickle (built-in)

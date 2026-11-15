@@ -1,6 +1,4 @@
-"""
-Phylogenetic features and distance calculations.
-"""
+"""Taxonomy-based distance and risk features."""
 
 import numpy as np
 from typing import Dict, List, Optional, Tuple
@@ -11,11 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class PhylogeneticFeatures:
-    """
-    Calculate phylogenetic-based features for host-virus relationships.
+    """Taxonomic lookup tables and the features derived from them.
+
+    Not a real phylogeny - order/family/genus rank distances standing in for
+    branch lengths.
     """
 
-    # Host taxonomic hierarchy
     TAXONOMY = {
         "Homo_sapiens": {"order": "Primates", "family": "Hominidae", "genus": "Homo"},
         "Pan_troglodytes": {"order": "Primates", "family": "Hominidae", "genus": "Pan"},
@@ -58,7 +57,7 @@ class PhylogeneticFeatures:
         "Ovis_aries": {"order": "Artiodactyla", "family": "Bovidae", "genus": "Ovis"},
     }
 
-    # Taxonomic distances (simplified)
+    # between-order distances, hand-set and symmetric
     TAXONOMIC_DISTANCE = {
         ("Primates", "Primates"): 0.0,
         ("Primates", "Chiroptera"): 0.7,
@@ -80,71 +79,40 @@ class PhylogeneticFeatures:
 
     @classmethod
     def get_taxonomic_distance(cls, species1: str, species2: str) -> float:
-        """
-        Calculate taxonomic distance between two species.
-
-        Args:
-            species1: First species
-            species2: Second species
-
-        Returns:
-            float: Taxonomic distance
-        """
-        # Get taxonomy
+        """0 (same genus) to 1. Either species unknown -> 1.0."""
         tax1 = cls.TAXONOMY.get(species1, {})
         tax2 = cls.TAXONOMY.get(species2, {})
 
         if not tax1 or not tax2:
             return 1.0
 
-        # Check at each taxonomic level
         if tax1.get("order") == tax2.get("order"):
             if tax1.get("family") == tax2.get("family"):
                 if tax1.get("genus") == tax2.get("genus"):
-                    return 0.0  # Same genus
-                return 0.3  # Same family, different genus
-            return 0.6  # Same order, different family
+                    return 0.0
+                return 0.3
+            return 0.6
 
-        # Different orders
         return cls.TAXONOMIC_DISTANCE.get(
             (tax1.get("order", ""), tax2.get("order", "")), 1.0
         )
 
     @classmethod
     def get_phylogenetic_proximity(cls, species: str, known_hosts: List[str]) -> float:
-        """
-        Calculate phylogenetic proximity to known hosts.
-
-        Args:
-            species: Target species
-            known_hosts: List of known host species
-
-        Returns:
-            float: Proximity score (0-1, higher = closer)
-        """
+        """1 - distance to the nearest known host. Higher = closer."""
         if not known_hosts:
             return 0.5
 
-        # Calculate distance to nearest known host
         distances = [cls.get_taxonomic_distance(species, host) for host in known_hosts]
         min_distance = min(distances) if distances else 1.0
 
-        # Convert to proximity (1 - distance)
         proximity = 1 - min_distance
 
         return proximity
 
     @classmethod
     def get_order_risk_factor(cls, order: str) -> float:
-        """
-        Get risk factor based on taxonomic order.
-
-        Args:
-            order: Taxonomic order
-
-        Returns:
-            float: Risk factor
-        """
+        """Prior from reported filovirus host range; 0.3 for anything unlisted."""
         risk_factors = {
             "Primates": 0.8,
             "Chiroptera": 0.6,
@@ -159,24 +127,13 @@ class PhylogeneticFeatures:
 
     @classmethod
     def calculate_phylogenetic_features(cls, species: str) -> Dict:
-        """
-        Calculate all phylogenetic features for a species.
-
-        Args:
-            species: Species name
-
-        Returns:
-            Dict: Phylogenetic features
-        """
         taxonomy = cls.TAXONOMY.get(species, {})
         order = taxonomy.get("order", "Unknown")
         family = taxonomy.get("family", "Unknown")
         genus = taxonomy.get("genus", "Unknown")
 
-        # Risk factors
         order_risk = cls.get_order_risk_factor(order)
 
-        # Known host proximity (using known BDBV hosts)
         known_bdbv_hosts = [
             "Rousettus_aegyptiacus",
             "Eidolon_helvum",
@@ -194,33 +151,22 @@ class PhylogeneticFeatures:
             "is_chiroptera": 1 if order == "Chiroptera" else 0,
             "is_primate": 1 if order == "Primates" else 0,
             "is_artiodactyla": 1 if order == "Artiodactyla" else 0,
-            "taxonomic_rank_score": (len(order) + len(family)) / 20,  # Normalized
+            # name-length proxy, carries no real signal
+            "taxonomic_rank_score": (len(order) + len(family)) / 20,
         }
 
     @classmethod
     def calculate_host_species_similarity(cls, species1: str, species2: str) -> float:
-        """
-        Calculate overall similarity between two host species.
-
-        Args:
-            species1: First species
-            species2: Second species
-
-        Returns:
-            float: Similarity score
-        """
-        # Taxonomic distance
+        """60% taxonomy, 40% ecology - but the ecology term is still a constant,
+        so this is really just taxonomic similarity rescaled."""
         tax_dist = cls.get_taxonomic_distance(species1, species2)
         tax_similarity = 1 - tax_dist
 
-        # Get features
         feat1 = cls.calculate_phylogenetic_features(species1)
         feat2 = cls.calculate_phylogenetic_features(species2)
 
-        # Ecological similarity
-        eco_similarity = 0.5  # Placeholder, would use real ecological data
+        eco_similarity = 0.5  # placeholder until there's real ecological data
 
-        # Combine scores
         similarity = tax_similarity * 0.6 + eco_similarity * 0.4
 
         return similarity

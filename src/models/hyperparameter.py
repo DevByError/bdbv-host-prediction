@@ -1,25 +1,29 @@
-"""
-Hyperparameter optimization with Optuna and GridSearch.
-"""
+"""Hyperparameter search: grid, random, and Optuna."""
 
 import numpy as np
 from typing import Dict, List, Optional, Union, Callable
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-import optuna
-from optuna.samplers import TPESampler
 import logging
+
+try:
+    import optuna
+    from optuna.samplers import TPESampler
+
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
 class HyperparameterOptimizer:
     """
-    Advanced hyperparameter optimization with multiple methods.
+    Tunes a raw estimator class by grid, random, or Optuna search.
 
-    Methods:
-    - Grid Search (exhaustive)
-    - Random Search
-    - Bayesian Optimization (Optuna)
+    model_class has to be a real sklearn-style class (RandomForestClassifier,
+    XGBClassifier), not one of our BaseModel wrappers - sklearn clones the
+    estimator and the wrappers don't survive that. Wrap afterwards with
+    to_base_model().
     """
 
     def __init__(
@@ -30,16 +34,8 @@ class HyperparameterOptimizer:
         n_folds: int = 5,
         random_state: int = 42,
     ):
-        """
-        Initialize optimizer.
-
-        Args:
-            model_class: Model class (not instantiated)
-            param_grid: Parameter grid or search space
-            scoring: Scoring metric
-            n_folds: Number of CV folds
-            random_state: Random seed
-        """
+        # param_grid is name -> list of values for grid/random; Optuna also
+        # accepts a (low, high, step) tuple for a numeric range
         self.model_class = model_class
         self.param_grid = param_grid
         self.scoring = scoring
@@ -51,17 +47,6 @@ class HyperparameterOptimizer:
         self.results = []
 
     def grid_search(self, X: np.ndarray, y: np.ndarray, n_jobs: int = -1) -> Dict:
-        """
-        Perform grid search.
-
-        Args:
-            X: Features
-            y: Labels
-            n_jobs: Number of parallel jobs
-
-        Returns:
-            Dict: Best parameters and score
-        """
         from sklearn.model_selection import GridSearchCV
 
         logger.info("Performing grid search...")
@@ -99,18 +84,6 @@ class HyperparameterOptimizer:
     def random_search(
         self, X: np.ndarray, y: np.ndarray, n_iter: int = 100, n_jobs: int = -1
     ) -> Dict:
-        """
-        Perform random search.
-
-        Args:
-            X: Features
-            y: Labels
-            n_iter: Number of iterations
-            n_jobs: Number of parallel jobs
-
-        Returns:
-            Dict: Best parameters and score
-        """
         from sklearn.model_selection import RandomizedSearchCV
 
         logger.info(f"Performing random search ({n_iter} iterations)...")
@@ -154,22 +127,16 @@ class HyperparameterOptimizer:
         n_trials: int = 100,
         timeout: Optional[int] = None,
     ) -> Dict:
-        """
-        Perform Bayesian optimization with Optuna.
+        """TPE search; returns the history dict, with the study object under 'study'."""
+        if not OPTUNA_AVAILABLE:
+            raise ImportError(
+                "optuna is not installed. Install with: pip install optuna, "
+                "or use grid_search()/random_search() instead."
+            )
 
-        Args:
-            X: Features
-            y: Labels
-            n_trials: Number of trials
-            timeout: Timeout in seconds
-
-        Returns:
-            Dict: Best parameters and score
-        """
         logger.info(f"Performing Optuna optimization ({n_trials} trials)...")
 
         def objective(trial):
-            # Sample parameters from the search space
             params = {}
 
             for key, value in self.param_grid.items():
@@ -183,10 +150,8 @@ class HyperparameterOptimizer:
                 else:
                     params[key] = value
 
-            # Train model
             model = self.model_class(**params)
 
-            # Cross-validate
             cv = StratifiedKFold(
                 n_splits=self.n_folds, shuffle=True, random_state=self.random_state
             )
@@ -195,25 +160,21 @@ class HyperparameterOptimizer:
 
             return scores.mean()
 
-        # Create study
         sampler = TPESampler(seed=self.random_state)
         study = optuna.create_study(direction="maximize", sampler=sampler)
 
-        # Optimize
         study.optimize(objective, n_trials=n_trials, timeout=timeout)
 
-        # Get best parameters
         self.best_params = study.best_params
         self.best_score = study.best_value
 
-        # Train best model
+        # refit on the full X/y, the CV scores above came from folds
         self.best_model = self.model_class(**self.best_params)
         self.best_model.fit(X, y)
 
         logger.info(f"Best params: {self.best_params}")
         logger.info(f"Best score: {self.best_score:.4f}")
 
-        # Get optimization history
         history = {
             "trials": len(study.trials),
             "best_trial": study.best_trial.number,
@@ -225,5 +186,11 @@ class HyperparameterOptimizer:
         return history
 
     def get_best_model(self):
-        """Get the best model found."""
+        """The raw estimator, not a BaseModel wrapper."""
         return self.best_model
+
+    def to_base_model(self, base_model_class):
+        """Build (unfitted) BaseModel wrapper from best_params - caller still fits it."""
+        if self.best_params is None:
+            raise ValueError("Run grid_search/random_search/optuna_optimize first")
+        return base_model_class(config=dict(self.best_params))

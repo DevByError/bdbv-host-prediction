@@ -1,6 +1,4 @@
-"""
-Input validation utilities.
-"""
+"""Shape and sanity checks on features, labels and predictions."""
 
 from typing import Any, Dict, List, Optional, Union
 import numpy as np
@@ -11,25 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class Validator:
-    """
-    Data validation utilities.
-    """
-
     @staticmethod
     def validate_features(
         X: Union[np.ndarray, pd.DataFrame],
         required_features: Optional[List[str]] = None,
     ) -> bool:
-        """
-        Validate features.
-
-        Args:
-            X: Features
-            required_features: List of required feature names
-
-        Returns:
-            bool: Whether valid
-        """
+        """NaNs only warn here; a missing required column is what makes this return False."""
         if X is None:
             logger.error("Features are None")
             return False
@@ -41,7 +26,6 @@ class Validator:
                     logger.error(f"Missing required features: {missing}")
                     return False
 
-            # Check for NaN
             if X.isnull().any().any():
                 logger.warning("Features contain NaN values")
 
@@ -55,21 +39,10 @@ class Validator:
     def validate_labels(
         y: Union[np.ndarray, pd.Series], classes: Optional[List] = None
     ) -> bool:
-        """
-        Validate labels.
-
-        Args:
-            y: Labels
-            classes: Expected classes
-
-        Returns:
-            bool: Whether valid
-        """
         if y is None:
             logger.error("Labels are None")
             return False
 
-        # Check for NaN
         if isinstance(y, pd.Series):
             if y.isnull().any():
                 logger.error("Labels contain NaN")
@@ -79,7 +52,6 @@ class Validator:
                 logger.error("Labels contain NaN")
                 return False
 
-        # Check classes
         if classes is not None:
             unique_classes = np.unique(y)
             if not all(c in unique_classes for c in classes):
@@ -94,16 +66,6 @@ class Validator:
     def validate_input_shape(
         X: Union[np.ndarray, pd.DataFrame], expected_features: Optional[int] = None
     ) -> bool:
-        """
-        Validate input shape.
-
-        Args:
-            X: Input data
-            expected_features: Expected number of features
-
-        Returns:
-            bool: Whether valid
-        """
         if X is None:
             logger.error("Input is None")
             return False
@@ -130,19 +92,6 @@ class Validator:
         y_train: Union[np.ndarray, pd.Series],
         y_test: Union[np.ndarray, pd.Series],
     ) -> bool:
-        """
-        Validate train/test split.
-
-        Args:
-            X_train: Training features
-            X_test: Test features
-            y_train: Training labels
-            y_test: Test labels
-
-        Returns:
-            bool: Whether valid
-        """
-        # Check sizes
         if len(X_train) != len(y_train):
             logger.error(
                 f"X_train ({len(X_train)}) and y_train ({len(y_train)}) length mismatch"
@@ -155,7 +104,6 @@ class Validator:
             )
             return False
 
-        # Check both have samples
         if len(X_train) == 0:
             logger.error("Training set is empty")
             return False
@@ -170,16 +118,6 @@ class Validator:
     def validate_predictions(
         y_pred: Union[np.ndarray, List], expected_shape: Optional[tuple] = None
     ) -> bool:
-        """
-        Validate predictions.
-
-        Args:
-            y_pred: Predictions
-            expected_shape: Expected shape
-
-        Returns:
-            bool: Whether valid
-        """
         if y_pred is None:
             logger.error("Predictions are None")
             return False
@@ -195,23 +133,13 @@ class Validator:
 
     @staticmethod
     def sanitize_input(data: Dict) -> Dict:
-        """
-        Sanitize input data.
-
-        Args:
-            data: Input data
-
-        Returns:
-            Dict: Sanitized data
-        """
+        """Trims strings and turns numpy scalars into plain ints/floats so they serialise."""
         sanitized = {}
 
         for key, value in data.items():
-            # Remove whitespace
             if isinstance(value, str):
                 value = value.strip()
 
-            # Convert to standard types
             if isinstance(value, (np.integer, np.floating)):
                 value = float(value) if isinstance(value, np.floating) else int(value)
 

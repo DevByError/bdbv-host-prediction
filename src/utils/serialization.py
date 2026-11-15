@@ -1,6 +1,4 @@
-"""
-Serialization utilities for saving/loading models and data.
-"""
+"""Save/load helpers for models, config and frames."""
 
 import joblib
 import pickle
@@ -15,20 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class Serializer:
-    """
-    Unified serializer for various formats.
-    """
-
     @staticmethod
     def save_model(model: Any, path: Path, protocol: int = 4):
-        """
-        Save model using joblib.
-
-        Args:
-            model: Model to save
-            path: Save path
-            protocol: Pickle protocol
-        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -37,15 +23,6 @@ class Serializer:
 
     @staticmethod
     def load_model(path: Path) -> Any:
-        """
-        Load model using joblib.
-
-        Args:
-            path: Model path
-
-        Returns:
-            Any: Loaded model
-        """
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Model not found: {path}")
@@ -56,7 +33,6 @@ class Serializer:
 
     @staticmethod
     def save_json(data: Dict, path: Path):
-        """Save data as JSON."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -67,7 +43,6 @@ class Serializer:
 
     @staticmethod
     def load_json(path: Path) -> Dict:
-        """Load JSON data."""
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
@@ -77,7 +52,6 @@ class Serializer:
 
     @staticmethod
     def save_yaml(data: Dict, path: Path):
-        """Save data as YAML."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +62,6 @@ class Serializer:
 
     @staticmethod
     def load_yaml(path: Path) -> Dict:
-        """Load YAML data."""
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
@@ -98,7 +71,6 @@ class Serializer:
 
     @staticmethod
     def save_pickle(data: Any, path: Path, protocol: int = 4):
-        """Save data using pickle."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -109,7 +81,6 @@ class Serializer:
 
     @staticmethod
     def load_pickle(path: Path) -> Any:
-        """Load pickle data."""
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")
@@ -119,13 +90,7 @@ class Serializer:
 
     @staticmethod
     def save_dataframe(df: pd.DataFrame, path: Path):
-        """
-        Save DataFrame in appropriate format based on extension.
-
-        Args:
-            df: DataFrame to save
-            path: Save path with extension
-        """
+        """Format comes from the extension; anything unrecognised falls back to CSV."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -144,15 +109,6 @@ class Serializer:
 
     @staticmethod
     def load_dataframe(path: Path) -> pd.DataFrame:
-        """
-        Load DataFrame based on file extension.
-
-        Args:
-            path: File path
-
-        Returns:
-            pd.DataFrame: Loaded DataFrame
-        """
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"File not found: {path}")

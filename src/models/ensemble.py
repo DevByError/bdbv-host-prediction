@@ -1,11 +1,8 @@
-"""
-Ensemble models combining multiple classifiers.
-"""
+"""Voting/stacking ensembles over the base classifiers."""
 
 import numpy as np
 from typing import Dict, List, Optional, Union
 from sklearn.ensemble import VotingClassifier, StackingClassifier
-from sklearn.base import clone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,7 +10,11 @@ logger = logging.getLogger(__name__)
 
 class EnsembleModel:
     """
-    Create ensemble models with voting or stacking.
+    Voting or stacking over base_models.
+
+    base_models can hold raw estimators or our BaseModel wrappers; wrappers
+    get unwrapped to .model because sklearn clones base estimators during
+    fit() and the wrappers aren't clone-able.
     """
 
     def __init__(
@@ -23,15 +24,9 @@ class EnsembleModel:
         final_estimator: Optional[object] = None,
         voting: str = "soft",
     ):
-        """
-        Initialize ensemble model.
+        if not base_models:
+            raise ValueError("base_models must contain at least one model")
 
-        Args:
-            base_models: Dictionary of {name: model}
-            ensemble_type: 'voting' or 'stacking'
-            final_estimator: Estimator for stacking
-            voting: 'soft' or 'hard' for voting
-        """
         self.base_models = base_models
         self.ensemble_type = ensemble_type
         self.final_estimator = final_estimator
@@ -39,61 +34,69 @@ class EnsembleModel:
         self.ensemble = None
         self._build_ensemble()
 
+    @staticmethod
+    def _unwrap(model):
+        """Raw estimator behind a BaseModel wrapper, or the model itself."""
+        return getattr(model, "model", model)
+
     def _build_ensemble(self):
-        """Build the ensemble model."""
+        raw_estimators = [
+            (name, self._unwrap(model)) for name, model in self.base_models.items()
+        ]
+
         if self.ensemble_type == "voting":
             self.ensemble = VotingClassifier(
-                estimators=list(self.base_models.items()), voting=self.voting
+                estimators=raw_estimators, voting=self.voting
             )
         elif self.ensemble_type == "stacking":
             self.ensemble = StackingClassifier(
-                estimators=list(self.base_models.items()),
-                final_estimator=self.final_estimator,
+                estimators=raw_estimators,
+                final_estimator=self._unwrap(self.final_estimator)
+                if self.final_estimator is not None
+                else None,
                 cv=5,
             )
         else:
             raise ValueError(f"Unknown ensemble type: {self.ensemble_type}")
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "EnsembleModel":
-        """Train the ensemble."""
+    def fit(self, X, y: np.ndarray) -> "EnsembleModel":
+        # sklearn refits every base estimator here, fitted ones passed in are ignored
+        X_arr = X.values if hasattr(X, "values") else np.asarray(X)
+        y_arr = np.asarray(y)
+        if len(X_arr) == 0:
+            raise ValueError("Cannot fit ensemble on empty data")
+        if len(X_arr) != len(y_arr):
+            raise ValueError(f"X ({len(X_arr)}) and y ({len(y_arr)}) length mismatch")
+
         logger.info(
             f"Training {self.ensemble_type} ensemble with {len(self.base_models)} models"
         )
-        self.ensemble.fit(X, y)
+        self.ensemble.fit(X_arr, y_arr)
         return self
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """Make predictions."""
-        return self.ensemble.predict(X)
+    def predict(self, X) -> np.ndarray:
+        X_arr = X.values if hasattr(X, "values") else np.asarray(X)
+        return self.ensemble.predict(X_arr)
 
-    def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        """Get prediction probabilities."""
-        return self.ensemble.predict_proba(X)
+    def predict_proba(self, X) -> np.ndarray:
+        X_arr = X.values if hasattr(X, "values") else np.asarray(X)
+        return self.ensemble.predict_proba(X_arr)
 
     def get_feature_importance(self) -> Dict[str, np.ndarray]:
-        """
-        Get feature importance from each model.
-
-        Returns:
-            Dict[str, np.ndarray]: Feature importance per model
-        """
+        """{model name: importances}; models exposing neither attribute are skipped."""
         importance = {}
 
         for name, model in self.base_models.items():
-            if hasattr(model, "feature_importances_"):
-                importance[name] = model.feature_importances_
-            elif hasattr(model, "coef_"):
-                importance[name] = np.abs(model.coef_[0])
+            raw = self._unwrap(model)
+            if hasattr(raw, "feature_importances_"):
+                importance[name] = raw.feature_importances_
+            elif hasattr(raw, "coef_"):
+                importance[name] = np.abs(raw.coef_[0])
 
         return importance
 
     def get_voting_weights(self) -> Dict[str, float]:
-        """
-        Get voting weights from ensemble.
-
-        Returns:
-            Dict[str, float]: Model weights
-        """
+        """Falls back to equal weights when the ensemble has none."""
         if hasattr(self.ensemble, "weights_"):
             return {
                 name: weight

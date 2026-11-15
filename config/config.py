@@ -1,7 +1,4 @@
-"""
-Global configuration for BDBV Host Prediction Project.
-All settings centralized for reproducibility.
-"""
+"""Project-wide settings. Everything tunable lives here."""
 
 import os
 from dataclasses import dataclass
@@ -11,32 +8,25 @@ from pathlib import Path
 
 @dataclass
 class PathConfig:
-    """All file paths in the project"""
-
-    # Project root
     ROOT_DIR: Path = Path(__file__).parent.parent
 
-    # Data paths
     DATA_DIR: Path = ROOT_DIR / "data"
     RAW_DATA_DIR: Path = DATA_DIR / "raw"
     PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
     EXTERNAL_DATA_DIR: Path = DATA_DIR / "external"
 
-    # Results paths
     RESULTS_DIR: Path = ROOT_DIR / "results"
     FIGURES_DIR: Path = RESULTS_DIR / "figures"
     MODELS_DIR: Path = RESULTS_DIR / "models"
     REPORTS_DIR: Path = RESULTS_DIR / "reports"
 
-    # Logs
     LOGS_DIR: Path = ROOT_DIR / "logs"
 
-    # Specific files
     DATA_TEMPLATE: Path = RAW_DATA_DIR / "filovirus_data_template.csv"
     BDBV_REFERENCE: Path = RAW_DATA_DIR / "bdbv_reference_data.csv"
 
     def __post_init__(self):
-        """Create all directories"""
+        # make sure the tree exists before anything tries to write into it
         for dir_path in [
             self.DATA_DIR,
             self.RAW_DATA_DIR,
@@ -53,8 +43,6 @@ class PathConfig:
 
 @dataclass
 class ModelConfig:
-    """Model hyperparameters"""
-
     # Random Forest
     rf_n_estimators: int = 100
     rf_max_depth: Optional[int] = None
@@ -78,8 +66,6 @@ class ModelConfig:
 
 @dataclass
 class TrainingConfig:
-    """Training parameters"""
-
     # Split
     test_size: float = 0.25
     val_size: float = 0.2
@@ -102,8 +88,6 @@ class TrainingConfig:
 
 @dataclass
 class FeatureConfig:
-    """Feature engineering parameters"""
-
     # Biological features
     use_codon_analysis: bool = True
     use_protein_analysis: bool = True
@@ -121,14 +105,12 @@ class FeatureConfig:
 
 @dataclass
 class VisualizationConfig:
-    """Visualization styling"""
-
     # Figure settings
     figure_dpi: int = 600
     figure_format: str = "png"
     vector_format: str = "svg"  # For publications
 
-    # Colors (colorblind-friendly)
+    # colourblind-safe, same palette as the paper figures
     primary_color: str = "#2E86AB"  # Blue
     secondary_color: str = "#A23B72"  # Purple
     success_color: str = "#3D8C40"  # Green
@@ -144,8 +126,6 @@ class VisualizationConfig:
 
 @dataclass
 class Config:
-    """Master configuration"""
-
     paths: PathConfig = PathConfig()
     model: ModelConfig = ModelConfig()
     training: TrainingConfig = TrainingConfig()
@@ -158,15 +138,21 @@ class Config:
     seed: int = 42
 
     def __post_init__(self):
-        """Set random seeds"""
-        import numpy as np
+        # imported here, top-level numpy import makes config import heavy
         import random
+        import numpy as np
+        import os
 
         random.seed(self.seed)
         np.random.seed(self.seed)
+        os.environ["PYTHONHASHSEED"] = str(self.seed)
+
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Config initialized with seed={self.seed}")
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for serialization"""
+        """Flat summary of the settings we actually report in runs."""
         return {
             "seed": self.seed,
             "verbose": self.verbose,
@@ -195,5 +181,4 @@ class Config:
         }
 
 
-# Singleton instance
 config = Config()

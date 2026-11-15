@@ -1,36 +1,34 @@
-"""
-Interactive dashboard for model exploration.
-"""
+"""Plotly figures for poking at results interactively."""
 
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
+from __future__ import annotations
+
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional
 import logging
 
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
 class InteractiveDashboard:
-    """
-    Interactive Plotly dashboard for model exploration.
-    """
-
     def __init__(self):
+        if not PLOTLY_AVAILABLE:
+            raise ImportError(
+                "plotly is not installed. Install with: pip install plotly"
+            )
         self.figures = {}
 
     def create_roc_plot(self, results: Dict) -> go.Figure:
-        """
-        Create interactive ROC curve plot.
-
-        Args:
-            results: Model results
-
-        Returns:
-            go.Figure: Plotly figure
-        """
+        """One curve per model; expects fpr/tpr/roc_auc in each entry."""
         fig = go.Figure()
 
         for model_name, model_results in results.items():
@@ -48,7 +46,7 @@ class InteractiveDashboard:
                     )
                 )
 
-        # Random classifier
+        # diagonal reference
         fig.add_trace(
             go.Scatter(
                 x=[0, 1],
@@ -73,17 +71,6 @@ class InteractiveDashboard:
     def create_confusion_matrix(
         self, y_true: np.ndarray, y_pred: np.ndarray, labels: List[str]
     ) -> go.Figure:
-        """
-        Create interactive confusion matrix.
-
-        Args:
-            y_true: True labels
-            y_pred: Predicted labels
-            labels: Class labels
-
-        Returns:
-            go.Figure: Plotly figure
-        """
         from sklearn.metrics import confusion_matrix
 
         cm = confusion_matrix(y_true, y_pred)
@@ -112,15 +99,6 @@ class InteractiveDashboard:
         return fig
 
     def create_feature_importance(self, importance_df: pd.DataFrame) -> go.Figure:
-        """
-        Create interactive feature importance plot.
-
-        Args:
-            importance_df: Feature importance DataFrame
-
-        Returns:
-            go.Figure: Plotly figure
-        """
         fig = go.Figure()
 
         fig.add_trace(
@@ -148,18 +126,9 @@ class InteractiveDashboard:
         return fig
 
     def create_prediction_scatter(self, predictions: pd.DataFrame) -> go.Figure:
-        """
-        Create interactive prediction scatter plot.
-
-        Args:
-            predictions: Prediction DataFrame
-
-        Returns:
-            go.Figure: Plotly figure
-        """
+        """Scores coloured by risk band, with the band cut-offs drawn in."""
         fig = go.Figure()
 
-        # Color by risk category
         colors = {"High": "red", "Medium": "orange", "Low": "green"}
 
         for category in ["High", "Medium", "Low"]:
@@ -182,7 +151,6 @@ class InteractiveDashboard:
                     )
                 )
 
-        # Add threshold lines
         fig.add_hline(
             y=0.8,
             line_dash="dash",
@@ -210,15 +178,6 @@ class InteractiveDashboard:
         return fig
 
     def create_correlation_heatmap(self, X: pd.DataFrame) -> go.Figure:
-        """
-        Create interactive correlation heatmap.
-
-        Args:
-            X: Feature DataFrame
-
-        Returns:
-            go.Figure: Plotly figure
-        """
         corr = X.corr()
 
         fig = go.Figure(
@@ -239,16 +198,6 @@ class InteractiveDashboard:
     def create_parallel_coordinates(
         self, df: pd.DataFrame, target_col: str = "infection_status"
     ) -> go.Figure:
-        """
-        Create parallel coordinates plot.
-
-        Args:
-            df: Data
-            target_col: Target column
-
-        Returns:
-            go.Figure: Plotly figure
-        """
         fig = go.Figure(
             data=go.Parcoords(
                 line=dict(
@@ -262,7 +211,7 @@ class InteractiveDashboard:
                         values=df[col],
                         tickvals=np.percentile(df[col], [0, 25, 50, 75, 100]),
                     )
-                    for col in df.columns[:10]  # Limit to 10 features
+                    for col in df.columns[:10]  # more axes than this is unreadable
                 ],
             )
         )
@@ -274,13 +223,6 @@ class InteractiveDashboard:
         return fig
 
     def save_dashboard(self, output_path: str):
-        """
-        Save dashboard as HTML.
-
-        Args:
-            output_path: Output file path
-        """
-        # Create subplot figure
         fig = make_subplots(
             rows=2,
             cols=2,
@@ -292,8 +234,7 @@ class InteractiveDashboard:
             ),
         )
 
-        # Add traces (simplified)
-        # This would be populated with actual data
+        # traces still need wiring up to real results
 
         fig.update_layout(
             title="BDBV Host Prediction Dashboard", height=900, width=1200

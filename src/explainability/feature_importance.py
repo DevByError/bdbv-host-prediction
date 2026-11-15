@@ -1,6 +1,4 @@
-"""
-Feature importance analysis with multiple methods.
-"""
+"""Feature importance by model attribute, permutation, or dropping columns."""
 
 import numpy as np
 import pandas as pd
@@ -12,27 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class FeatureImportance:
-    """
-    Comprehensive feature importance analysis.
-
-    Methods:
-    - Model-based (tree importance, coefficients)
-    - Permutation importance
-    - SHAP (via SHAPAnalyzer)
-    - Drop-column importance
-    """
-
     def __init__(self, model, feature_names: List[str]):
         self.model = model
         self.feature_names = feature_names
 
     def get_model_importance(self) -> pd.DataFrame:
-        """
-        Get model-based feature importance.
-
-        Returns:
-            pd.DataFrame: Feature importance
-        """
+        """feature_importances_ for trees, |coef_| for linear models, empty frame otherwise."""
         if hasattr(self.model, "feature_importances_"):
             importance = self.model.feature_importances_
             method = "tree_importance"
@@ -51,18 +34,6 @@ class FeatureImportance:
     def get_permutation_importance(
         self, X: np.ndarray, y: np.ndarray, n_repeats: int = 10, scoring: str = "f1"
     ) -> pd.DataFrame:
-        """
-        Calculate permutation importance.
-
-        Args:
-            X: Features
-            y: Labels
-            n_repeats: Number of permutations
-            scoring: Scoring metric
-
-        Returns:
-            pd.DataFrame: Permutation importance
-        """
         logger.info("Calculating permutation importance...")
 
         result = permutation_importance(
@@ -82,17 +53,7 @@ class FeatureImportance:
     def get_drop_column_importance(
         self, X: np.ndarray, y: np.ndarray, cv_scores: np.ndarray
     ) -> pd.DataFrame:
-        """
-        Calculate drop-column importance.
-
-        Args:
-            X: Features
-            y: Labels
-            cv_scores: Cross-validation scores
-
-        Returns:
-            pd.DataFrame: Drop-column importance
-        """
+        """Refits once per column, so this is slow - cv_scores is the baseline to compare against."""
         from sklearn.base import clone
         from sklearn.model_selection import cross_val_score
 
@@ -116,32 +77,19 @@ class FeatureImportance:
         return df
 
     def get_combined_importance(self, X: np.ndarray, y: np.ndarray) -> pd.DataFrame:
-        """
-        Combine multiple importance methods.
-
-        Args:
-            X: Features
-            y: Labels
-
-        Returns:
-            pd.DataFrame: Combined importance
-        """
-        # Get importance from multiple methods
+        """Each method normalised to sum to 1, then averaged, so the scales are comparable."""
         methods = {}
 
-        # Model importance
         model_imp = self.get_model_importance()
         if not model_imp.empty:
             methods["model"] = model_imp
 
-        # Permutation importance
         try:
             perm_imp = self.get_permutation_importance(X, y)
             methods["permutation"] = perm_imp
         except Exception as e:
             logger.warning(f"Permutation importance failed: {e}")
 
-        # Normalize and combine
         combined = None
 
         for name, df in methods.items():
@@ -155,7 +103,6 @@ class FeatureImportance:
                 combined = combined.join(df, how="outer")
 
         if combined is not None:
-            # Average across methods
             combined["combined"] = combined.mean(axis=1)
             combined = combined.sort_values("combined", ascending=False)
 

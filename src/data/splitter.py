@@ -1,6 +1,4 @@
-"""
-Data splitting with stratification and reproducibility.
-"""
+"""Train/test splitting."""
 
 import pandas as pd
 import numpy as np
@@ -12,15 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataSplitter:
-    """
-    Advanced data splitting with multiple strategies.
-
-    Strategies:
-    - Stratified split (default)
-    - Time-based split
-    - Species-based split (keep species together)
-    - Custom group split
-    """
+    """Stratified or species-grouped splits, plus stratified CV folds."""
 
     def __init__(self, random_state: int = 42, test_size: float = 0.25):
         self.random_state = random_state
@@ -30,25 +20,13 @@ class DataSplitter:
     def stratified_split(
         self, X: pd.DataFrame, y: pd.Series, val_size: Optional[float] = None
     ) -> Tuple:
-        """
-        Perform stratified train/test split.
-
-        Args:
-            X: Features
-            y: Labels
-            val_size: Validation set size (optional)
-
-        Returns:
-            Tuple: (X_train, X_test, y_train, y_test) or
-                   (X_train, X_val, X_test, y_train, y_val, y_test) if val_size provided
-        """
+        """Returns 4 arrays, or 6 (train/val/test) when val_size is given.
+        val_size is a fraction of the whole dataset, not of train+val."""
         logger.info(f"Performing stratified split (test={self.test_size:.1%})")
 
-        # Check class distribution
         logger.info(f"Class distribution: {np.bincount(y)}")
 
         if val_size:
-            # Split into train+val and test
             X_train_val, X_test, y_train_val, y_test = train_test_split(
                 X,
                 y,
@@ -57,7 +35,7 @@ class DataSplitter:
                 stratify=y,
             )
 
-            # Split train+val into train and val
+            # rescale so val_size stays a fraction of the full dataset
             val_relative = val_size / (1 - self.test_size)
             X_train, X_val, y_train, y_val = train_test_split(
                 X_train_val,
@@ -90,22 +68,16 @@ class DataSplitter:
     def species_split(
         self, X: pd.DataFrame, y: pd.Series, species_column: str
     ) -> Tuple:
-        """
-        Split by species to prevent data leakage.
-
-        Keeps all samples of the same species together.
-        """
+        """Whole species go to one side or the other, so the model can't
+        memorise a species it will be tested on."""
         logger.info("Performing species-based split")
 
-        # Get unique species
         species = X[species_column].unique()
         n_species = len(species)
         n_test_species = max(1, int(n_species * self.test_size))
 
-        # Randomly select test species
         test_species = np.random.choice(species, n_test_species, replace=False)
 
-        # Split
         test_mask = X[species_column].isin(test_species)
         train_mask = ~test_mask
 
@@ -124,12 +96,7 @@ class DataSplitter:
         return X_train, X_test, y_train, y_test
 
     def get_cv_splits(self, X: pd.DataFrame, y: pd.Series, n_folds: int = 5) -> list:
-        """
-        Generate cross-validation splits.
-
-        Returns:
-            list: List of (train_idx, test_idx) tuples
-        """
+        """List of (train_idx, test_idx) index arrays."""
         logger.info(f"Generating {n_folds}-fold CV splits")
 
         skf = StratifiedKFold(
@@ -143,7 +110,6 @@ class DataSplitter:
         return splits
 
     def get_split_info(self) -> Dict:
-        """Get information about the current splits"""
         info = {
             "test_size": self.test_size,
             "random_state": self.random_state,

@@ -1,6 +1,4 @@
-"""
-Consistent visualization styling for publication-quality figures.
-"""
+"""Shared matplotlib styling so every figure matches."""
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -8,11 +6,7 @@ from typing import Dict, Optional
 
 
 class FigureStyle:
-    """
-    Consistent styling for all figures.
-    """
-
-    # Colorblind-friendly palette
+    # colourblind-safe, same palette as the paper figures
     COLORS = {
         "primary": "#2E86AB",  # Blue
         "secondary": "#A23B72",  # Purple
@@ -26,7 +20,6 @@ class FigureStyle:
         "gold": "#D4A017",  # Gold
     }
 
-    # Font settings
     FONT_FAMILY = "Arial"
     FONT_SIZES = {
         "title": 16,
@@ -40,16 +33,9 @@ class FigureStyle:
 
     @classmethod
     def setup(cls, style: str = "seaborn-v0_8-whitegrid"):
-        """
-        Set up global styling.
-
-        Args:
-            style: matplotlib style to use
-        """
         plt.style.use(style)
         sns.set_style(style)
 
-        # Set color palette
         sns.set_palette(
             [
                 cls.COLORS["primary"],
@@ -64,57 +50,49 @@ class FigureStyle:
             ]
         )
 
-        # Font settings
         plt.rcParams["font.family"] = cls.FONT_FAMILY
+        # type 42 keeps text as text in the PDF/EPS, journals ask for it
         plt.rcParams["pdf.fonttype"] = 42
         plt.rcParams["ps.fonttype"] = 42
 
-        # Figure settings
         plt.rcParams["figure.dpi"] = 300
         plt.rcParams["savefig.dpi"] = 600
         plt.rcParams["savefig.bbox"] = "tight"
         plt.rcParams["savefig.facecolor"] = "white"
         plt.rcParams["savefig.edgecolor"] = "none"
 
-        # Axes settings
         plt.rcParams["axes.titlesize"] = cls.FONT_SIZES["title"]
         plt.rcParams["axes.labelsize"] = cls.FONT_SIZES["label"]
         plt.rcParams["axes.titleweight"] = "bold"
         plt.rcParams["axes.labelweight"] = "bold"
 
-        # Tick settings
         plt.rcParams["xtick.labelsize"] = cls.FONT_SIZES["tick"]
         plt.rcParams["ytick.labelsize"] = cls.FONT_SIZES["tick"]
 
-        # Legend settings
         plt.rcParams["legend.fontsize"] = cls.FONT_SIZES["legend"]
         plt.rcParams["legend.frameon"] = True
         plt.rcParams["legend.fancybox"] = True
 
-        # Grid settings
         plt.rcParams["grid.alpha"] = 0.2
         plt.rcParams["grid.linestyle"] = "--"
 
     @classmethod
     def get_color(cls, name: str) -> str:
-        """Get a color by name."""
         return cls.COLORS.get(name, cls.COLORS["primary"])
 
     @classmethod
     def get_colors(cls, n: int) -> list:
-        """Get n colors from the palette."""
         palette = list(cls.COLORS.values())
         if n <= len(palette):
             return palette[:n]
         else:
-            # Generate additional colors
+            # ran out of named colours, interpolate the rest
             import numpy as np
             from matplotlib.colors import to_rgb
 
             base_colors = [to_rgb(c) for c in palette]
             import colorsys
 
-            # Interpolate between colors
             additional = []
             for i in range(n - len(palette)):
                 idx = i % (len(palette) - 1)

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Prediction script for new host species.
-"""
+"""CLI wrapper around the prediction pipeline."""
 
 import sys
 from pathlib import Path
@@ -19,7 +17,6 @@ logger = get_logger(__name__)
 
 
 def main():
-    """Run prediction pipeline."""
     parser = argparse.ArgumentParser(description="Predict BDBV host susceptibility")
     parser.add_argument("--input", type=str, help="Input CSV file path")
     parser.add_argument("--output", type=str, help="Output CSV file path")
@@ -43,7 +40,6 @@ def main():
     logger.info(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"Using model: {args.model}")
 
-    # Initialize pipeline with specified model
     try:
         pipeline = PredictionPipeline(model_name=args.model)
     except FileNotFoundError as e:
@@ -57,7 +53,6 @@ def main():
                 logger.info(f"  - {f.stem.replace('_model', '')}")
         return
 
-    # Make predictions
     if args.input:
         logger.info(f"Loading data from {args.input}")
         df = pd.read_csv(args.input)
@@ -68,7 +63,6 @@ def main():
         predictions = pipeline.predict_batch(args.species, args.virus)
 
     else:
-        # Use example species
         logger.info("No input provided. Using example species...")
         example_species = [
             "Rousettus_aegyptiacus",
@@ -79,11 +73,9 @@ def main():
         ]
         predictions = pipeline.predict_batch(example_species, "BDBV")
 
-    # Save results
     output_path = args.output or "results/predictions.csv"
     pipeline.save_predictions(predictions, Path(output_path))
 
-    # Show summary
     logger.info("\n" + "=" * 80)
     logger.info("PREDICTION SUMMARY")
     logger.info("=" * 80)
@@ -97,7 +89,6 @@ def main():
     logger.info(f"Medium risk (50-80%): {len(medium_risk)} species")
     logger.info(f"Low risk (<50%): {len(low_risk)} species")
 
-    # Show top high risk species
     if len(high_risk) > 0:
         logger.info("\nHigh Risk Species:")
         for _, row in high_risk.head(5).iterrows():

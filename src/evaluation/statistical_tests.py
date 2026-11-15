@@ -1,6 +1,4 @@
-"""
-Statistical tests for model comparison and validation.
-"""
+"""Significance tests for comparing models."""
 
 import numpy as np
 from typing import Dict, List, Optional, Tuple
@@ -13,32 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 class StatisticalTests:
-    """
-    Statistical tests for model evaluation and comparison.
-    """
-
     @staticmethod
     def mcnemar_test(
         y_true: np.ndarray, y_pred1: np.ndarray, y_pred2: np.ndarray
     ) -> Dict:
-        """
-        McNemar's test for paired nominal data.
-
-        Args:
-            y_true: True labels
-            y_pred1: Predictions from model 1
-            y_pred2: Predictions from model 2
-
-        Returns:
-            Dict: Test results
-        """
-        # Create contingency table
-        # b: model1 correct, model2 incorrect
-        # c: model1 incorrect, model2 correct
+        """b = only model1 right, c = only model2 right. No continuity correction."""
         b = np.sum((y_pred1 == y_true) & (y_pred2 != y_true))
         c = np.sum((y_pred1 != y_true) & (y_pred2 == y_true))
 
-        # McNemar's test statistic
         if b + c > 0:
             chi2 = ((b - c) ** 2) / (b + c)
             p_value = 1 - stats.chi2.cdf(chi2, 1)
@@ -62,21 +42,13 @@ class StatisticalTests:
         metric: str = "accuracy",
     ) -> Dict:
         """
-        Paired t-test for comparing two models.
+        Paired comparison over bootstrap resamples of the test set.
 
-        Args:
-            y_true: True labels
-            y_pred1: Predictions from model 1
-            y_pred2: Predictions from model 2
-            metric: Metric to compare ('accuracy' or 'f1')
-
-        Returns:
-            Dict: Test results
+        The resamples aren't independent draws, so the p-value is optimistic
+        - treat it as a rough indication, McNemar is the stricter test here.
         """
         from sklearn.metrics import accuracy_score, f1_score
 
-        # Calculate metrics per sample (or per fold)
-        # Here we use bootstrap for paired comparison
         n_bootstrap = 1000
         n_samples = len(y_true)
 
@@ -96,7 +68,6 @@ class StatisticalTests:
             scores1.append(s1)
             scores2.append(s2)
 
-        # Paired t-test
         differences = np.array(scores1) - np.array(scores2)
         t_stat, p_value = stats.ttest_1samp(differences, 0)
 
@@ -114,19 +85,10 @@ class StatisticalTests:
     def compare_models_anova(
         y_true: np.ndarray, y_preds: Dict[str, np.ndarray]
     ) -> Dict:
-        """
-        One-way ANOVA to compare multiple models.
-
-        Args:
-            y_true: True labels
-            y_preds: Dictionary of {model_name: predictions}
-
-        Returns:
-            Dict: ANOVA results
-        """
+        """One-way ANOVA on bootstrap F1 distributions, one group per model."""
         from sklearn.metrics import f1_score
 
-        # Calculate F1 per model
+        # point estimates, reported alongside the test
         scores = []
         model_names = []
 
@@ -135,9 +97,7 @@ class StatisticalTests:
             scores.append(score)
             model_names.append(name)
 
-        # Perform ANOVA
-        # For ANOVA, we need multiple measurements per model
-        # Use bootstrap to get distribution
+        # ANOVA needs repeated measurements per model, so bootstrap them
         n_bootstrap = 100
         n_samples = len(y_true)
 
@@ -152,7 +112,7 @@ class StatisticalTests:
             all_scores.extend(boot_scores)
             all_names.extend([name] * n_bootstrap)
 
-        # ANOVA
+        # all_scores is laid out model-by-model, so slice it back into blocks
         groups = [
             all_scores[i : i + n_bootstrap]
             for i in range(0, len(all_scores), n_bootstrap)
@@ -168,22 +128,11 @@ class StatisticalTests:
 
     @staticmethod
     def cohen_kappa_confidence(y_true: np.ndarray, y_pred: np.ndarray) -> Dict:
-        """
-        Calculate Cohen's Kappa with confidence interval.
-
-        Args:
-            y_true: True labels
-            y_pred: Predicted labels
-
-        Returns:
-            Dict: Kappa with CI
-        """
+        """Kappa with a percentile bootstrap 95% CI, 1000 resamples."""
         from sklearn.metrics import cohen_kappa_score
 
-        # Calculate kappa
         kappa = cohen_kappa_score(y_true, y_pred)
 
-        # Bootstrap for CI
         n_bootstrap = 1000
         n_samples = len(y_true)
         kappas = []
@@ -205,7 +154,7 @@ class StatisticalTests:
 
     @staticmethod
     def _interpret_kappa(kappa: float) -> str:
-        """Interpret Cohen's Kappa value."""
+        """Landis & Koch bands."""
         if kappa < 0:
             return "Poor agreement (worse than chance)"
         elif kappa < 0.2:
@@ -220,22 +169,50 @@ class StatisticalTests:
             return "Almost perfect agreement"
 
     @staticmethod
+    def holm_bonferroni_correction(
+        p_values: Dict[str, float], alpha: float = 0.05
+    ) -> pd.DataFrame:
+        """
+        Holm step-down over a {comparison label: raw p} mapping.
+
+        i-th smallest p is compared against alpha / (n - i + 1); result is
+        sorted by p with the per-test threshold kept in the table.
+        """
+        if not p_values:
+            raise ValueError("p_values must not be empty")
+
+        n = len(p_values)
+        sorted_items = sorted(p_values.items(), key=lambda kv: kv[1])
+
+        rows = []
+        still_significant = True
+        for rank, (comparison, p) in enumerate(sorted_items, start=1):
+            threshold = alpha / (n - rank + 1)
+            # once one fails, everything above it fails too
+            if p > threshold:
+                still_significant = False
+            rows.append(
+                {
+                    "comparison": comparison,
+                    "p_value": p,
+                    "rank": rank,
+                    "threshold": threshold,
+                    "significant": still_significant,
+                }
+            )
+
+        return pd.DataFrame(rows)
+
+    @staticmethod
     def deLong_roc_test(
         y_true: np.ndarray, y_prob1: np.ndarray, y_prob2: np.ndarray
     ) -> Dict:
         """
-        DeLong's test for comparing ROC curves.
+        AUC comparison between two models.
 
-        Args:
-            y_true: True labels
-            y_prob1: Probabilities from model 1
-            y_prob2: Probabilities from model 2
-
-        Returns:
-            Dict: Test results
+        Not actually DeLong's covariance estimator - this bootstraps the AUC
+        difference and takes a normal z. Name kept for the callers.
         """
-        # Implementation of DeLong's test
-        # Simplified version using bootstrap
         n_bootstrap = 1000
         n_samples = len(y_true)
 

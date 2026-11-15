@@ -1,6 +1,4 @@
-"""
-Performance timing utilities.
-"""
+"""Stopwatch helpers for timing pipeline steps."""
 
 import time
 from contextlib import contextmanager
@@ -12,24 +10,18 @@ logger = logging.getLogger(__name__)
 
 
 class Timer:
-    """
-    Timer for performance measurement.
-    """
-
     def __init__(self):
         self.start_time = None
         self.end_time = None
         self.elapsed = None
 
     def start(self) -> "Timer":
-        """Start the timer."""
         self.start_time = time.perf_counter()
         self.end_time = None
         self.elapsed = None
         return self
 
     def stop(self) -> float:
-        """Stop the timer and return elapsed time."""
         if self.start_time is None:
             raise ValueError("Timer not started")
 
@@ -38,14 +30,13 @@ class Timer:
         return self.elapsed
 
     def reset(self) -> "Timer":
-        """Reset the timer."""
         self.start_time = None
         self.end_time = None
         self.elapsed = None
         return self
 
     def format(self) -> str:
-        """Format elapsed time as string."""
+        """Seconds under a minute, then m/s, then h/m."""
         if self.elapsed is None:
             return "Not measured"
 
@@ -71,15 +62,6 @@ class Timer:
 
 @contextmanager
 def timing(name: str = "Operation"):
-    """
-    Context manager for timing code blocks.
-
-    Args:
-        name: Name of the operation
-
-    Yields:
-        Timer: Timer instance
-    """
     timer = Timer()
     timer.start()
     try:
@@ -90,16 +72,12 @@ def timing(name: str = "Operation"):
 
 
 class PerformanceTracker:
-    """
-    Track performance metrics across multiple operations.
-    """
-
     def __init__(self):
         self.times: Dict[str, float] = {}
         self.counts: Dict[str, int] = {}
 
     def record(self, name: str, elapsed: float):
-        """Record a timing."""
+        """Adds to the running total for that name rather than replacing it."""
         if name not in self.times:
             self.times[name] = 0
             self.counts[name] = 0
@@ -108,17 +86,14 @@ class PerformanceTracker:
         self.counts[name] += 1
 
     def get_average(self, name: str) -> float:
-        """Get average time for an operation."""
         if name not in self.times or self.counts[name] == 0:
             return 0
         return self.times[name] / self.counts[name]
 
     def get_total(self, name: str) -> float:
-        """Get total time for an operation."""
         return self.times.get(name, 0)
 
     def get_summary(self) -> str:
-        """Get summary of all timings."""
         lines = ["Performance Summary:"]
         lines.append("-" * 40)
 
@@ -131,10 +106,8 @@ class PerformanceTracker:
         return "\n".join(lines)
 
     def log_summary(self):
-        """Log the summary."""
         logger.info(self.get_summary())
 
     def reset(self):
-        """Reset all metrics."""
         self.times.clear()
         self.counts.clear()

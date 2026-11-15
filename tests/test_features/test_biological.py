@@ -15,7 +15,8 @@ class TestBiologicalFeatures:
         sequence = "ATGCGATCG"
         gc = BiologicalFeatures.calculate_gc_content(sequence)
 
-        expected = 6 / 9 * 100  # 6 G/C out of 9 bases
+        # Count: G at positions 3,5,9 (3 Gs), C at positions 4,8 (2 Cs)
+        expected = 5 / 9 * 100  # 5 G/C out of 9 bases
         assert abs(gc - expected) < 0.01
 
     def test_gc_content_empty(self):

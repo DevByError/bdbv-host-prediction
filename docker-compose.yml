@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  bdbv-train:
+    build: .
+    container_name: bdbv-host-prediction
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=42
+    command: python scripts/run_training.py
+    restart: "no"
+
+  bdbv-predict:
+    build: .
+    container_name: bdbv-predict
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=42
+    command: python scripts/run_prediction.py --input data/new_hosts.csv --output results/predictions.csv
+    restart: "no"
+
+  bdbv-validate:
+    build: .
+    container_name: bdbv-validate
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=42
+    command: python scripts/run_validation.py
+    restart: "no"
+
+  bdbv-jupyter:
+    build: .
+    container_name: bdbv-jupyter
+    volumes:
+      - ./data:/app/data
+      - ./results:/app/results
+      - ./notebooks:/app/notebooks
+      - ./logs:/app/logs
+    ports:
+      - "8888:8888"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=42
+      - JUPYTER_ENABLE_LAB=yes
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root
+    restart: "no"

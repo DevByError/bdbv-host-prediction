@@ -1,6 +1,4 @@
-"""
-Geospatial visualization for risk mapping.
-"""
+"""Risk maps: scatter, gridded heatmap, timeline."""
 
 import numpy as np
 import pandas as pd
@@ -14,15 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 class RiskMapGenerator:
-    """
-    Generate geospatial risk maps.
-    """
-
     def __init__(self, output_dir: Optional[Path] = None):
         self.output_dir = output_dir or Path("results/maps")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Color schemes
         self.risk_colors = {
             "high": "#C73E1D",
             "medium": "#F18F01",
@@ -36,20 +29,9 @@ class RiskMapGenerator:
         title: str = "BDBV Spillover Risk",
         output_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plot geospatial risk map.
-
-        Args:
-            risk_data: DataFrame with 'latitude', 'longitude', 'risk'
-            title: Plot title
-            output_path: Output path
-
-        Returns:
-            plt.Figure: Figure object
-        """
+        """risk_data needs latitude, longitude, risk; size is optional."""
         fig, ax = plt.subplots(figsize=(14, 10))
 
-        # Create scatter plot
         scatter = ax.scatter(
             risk_data["longitude"],
             risk_data["latitude"],
@@ -61,19 +43,15 @@ class RiskMapGenerator:
             linewidth=1,
         )
 
-        # Add colorbar
         cbar = plt.colorbar(scatter, ax=ax)
         cbar.set_label("Risk Probability", fontsize=12, fontweight="bold")
 
-        # Set labels
         ax.set_xlabel("Longitude", fontsize=12, fontweight="bold")
         ax.set_ylabel("Latitude", fontsize=12, fontweight="bold")
         ax.set_title(title, fontsize=16, fontweight="bold")
 
-        # Add grid
         ax.grid(True, alpha=0.2)
 
-        # Save
         if output_path:
             plt.savefig(output_path, dpi=300, bbox_inches="tight")
             logger.info(f"Risk map saved to {output_path}")
@@ -88,27 +66,14 @@ class RiskMapGenerator:
         title: str = "BDBV Risk Heatmap",
         output_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plot risk heatmap.
-
-        Args:
-            lat_grid: Latitude grid
-            lon_grid: Longitude grid
-            risk_grid: Risk values grid
-            title: Plot title
-            output_path: Output path
-
-        Returns:
-            plt.Figure: Figure object
-        """
+        """Filled contours over a pre-computed lat/lon risk grid."""
         fig, ax = plt.subplots(figsize=(14, 10))
 
-        # Plot heatmap
         contour = ax.contourf(
             lon_grid, lat_grid, risk_grid, levels=20, cmap="YlOrRd", alpha=0.8
         )
 
-        # Add contour lines
+        # faint 0.3/0.5/0.7 lines, the thresholds we quote in the text
         ax.contour(
             lon_grid,
             lat_grid,
@@ -119,7 +84,6 @@ class RiskMapGenerator:
             alpha=0.3,
         )
 
-        # Colorbar
         cbar = plt.colorbar(contour, ax=ax)
         cbar.set_label("Risk Probability", fontsize=12, fontweight="bold")
 
@@ -139,23 +103,11 @@ class RiskMapGenerator:
         title: str = "Risk Over Time",
         output_path: Optional[str] = None,
     ) -> plt.Figure:
-        """
-        Plot risk timeline.
-
-        Args:
-            risk_data: DataFrame with 'date' and 'risk'
-            title: Plot title
-            output_path: Output path
-
-        Returns:
-            plt.Figure: Figure object
-        """
+        """risk_data needs date and risk columns."""
         fig, ax = plt.subplots(figsize=(12, 6))
 
-        # Sort by date
         risk_data = risk_data.sort_values("date")
 
-        # Plot
         ax.plot(
             risk_data["date"],
             risk_data["risk"],
@@ -165,7 +117,7 @@ class RiskMapGenerator:
             markersize=6,
         )
 
-        # Add trend line
+        # plain linear trend, nothing fancy
         z = np.polyfit(range(len(risk_data)), risk_data["risk"], 1)
         trend = np.polyval(z, range(len(risk_data)))
         ax.plot(

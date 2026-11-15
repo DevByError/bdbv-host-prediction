@@ -1,39 +1,37 @@
-"""
-SHAP analysis for model interpretability.
-"""
+"""SHAP wrappers: explainer setup, the usual plots, and a roll-up by feature group."""
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Optional, List, Dict, Union, Tuple
-import shap
 import logging
+
+try:
+    import shap
+
+    SHAP_AVAILABLE = True
+except ImportError:
+    SHAP_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
 class SHAPAnalyzer:
-    """
-    Comprehensive SHAP analysis for model interpretability.
-
-    Features:
-    - Global feature importance
-    - Local explanations
-    - Feature interaction analysis
-    - Biological pathway mapping
-    """
-
     def __init__(self, model, feature_names: List[str], model_type: str = "tree"):
-        """
-        Initialize SHAP analyzer.
+        """model may be a bare estimator or one of our BaseModel wrappers; both work."""
+        if not SHAP_AVAILABLE:
+            raise ImportError(
+                "shap is not installed. Install with: pip install shap"
+            )
 
-        Args:
-            model: Trained model
-            feature_names: List of feature names
-            model_type: 'tree', 'linear', or 'kernel'
-        """
         self.model = model
+        # tree/linear explainers poke at the estimator internals, so unwrap;
+        # predict_proba stays on the wrapper so its input handling still runs
+        self._raw_model = getattr(model, "model", model)
+        self._predict_proba = (
+            model.predict_proba if hasattr(model, "predict_proba") else None
+        )
         self.feature_names = feature_names
         self.model_type = model_type
         self.explainer = None
@@ -46,22 +44,13 @@ class SHAPAnalyzer:
     def fit_explainer(
         self, X_sample: Union[np.ndarray, pd.DataFrame], max_samples: int = 100
     ) -> "SHAPAnalyzer":
-        """
-        Fit the SHAP explainer.
-
-        Args:
-            X_sample: Sample data for background
-            max_samples: Maximum samples to use
-
-        Returns:
-            SHAPAnalyzer: Self
-        """
+        """X_sample doubles as the background set and as what the plots are drawn over."""
         logger.info("Fitting SHAP explainer...")
 
         if isinstance(X_sample, pd.DataFrame):
             X_sample = X_sample.values
 
-        # Limit samples
+        # kernel explainer gets very slow past a few hundred background rows
         if len(X_sample) > max_samples:
             rng = np.random.default_rng(42)
             indices = rng.choice(len(X_sample), max_samples, replace=False)
@@ -69,36 +58,37 @@ class SHAPAnalyzer:
 
         self.background_data = X_sample
 
-        # Choose explainer
+        if self._predict_proba is None and self.model_type != "linear":
+            raise ValueError(
+                "Model has no predict_proba method; required for kernel/tree "
+                "fallback explainers"
+            )
+
         try:
             if self.model_type == "tree":
-                self.explainer = shap.TreeExplainer(self.model)
+                self.explainer = shap.TreeExplainer(self._raw_model)
             elif self.model_type == "linear":
-                self.explainer = shap.LinearExplainer(self.model, X_sample)
+                self.explainer = shap.LinearExplainer(self._raw_model, X_sample)
             else:
-                self.explainer = shap.KernelExplainer(
-                    self.model.predict_proba, X_sample
-                )
+                self.explainer = shap.KernelExplainer(self._predict_proba, X_sample)
         except Exception as e:
             logger.warning(
-                f"Could not create TreeExplainer, falling back to KernelExplainer: {e}"
+                f"Could not create {self.model_type} explainer, "
+                f"falling back to KernelExplainer: {e}"
             )
-            self.explainer = shap.KernelExplainer(self.model.predict_proba, X_sample)
+            self.explainer = shap.KernelExplainer(self._predict_proba, X_sample)
             self.model_type = "kernel"
 
-        # Calculate SHAP values
         try:
             self.shap_values = self.explainer.shap_values(X_sample)
 
-            # Handle different return types
+            # older shap returns one array per class; we want the positive one
             if isinstance(self.shap_values, list):
-                # For binary classification, use class 1
                 if len(self.shap_values) > 1:
                     self.shap_values = self.shap_values[1]
                 else:
                     self.shap_values = self.shap_values[0]
 
-            # Store expected value
             if hasattr(self.explainer, "expected_value"):
                 if isinstance(self.explainer.expected_value, (list, np.ndarray)):
                     self.expected_value = (
@@ -119,25 +109,14 @@ class SHAPAnalyzer:
     def plot_summary(
         self, max_display: int = 20, output_path: Optional[str] = None
     ) -> plt.Figure:
-        """
-        Generate SHAP summary plot.
-
-        Args:
-            max_display: Maximum features to display
-            output_path: Path to save figure
-
-        Returns:
-            plt.Figure: Figure object
-        """
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
         logger.info(f"Generating SHAP summary plot (top {max_display})")
 
-        # Create figure
         fig, ax = plt.subplots(figsize=(12, 10))
 
-        # Create summary plot without ax parameter
+        # summary_plot takes no ax, it draws on the current figure
         shap.summary_plot(
             self.shap_values,
             self.background_data,
@@ -146,7 +125,6 @@ class SHAPAnalyzer:
             show=False,
         )
 
-        # Get the current figure and set title
         current_fig = plt.gcf()
         current_fig.suptitle(
             "SHAP Feature Importance Summary", fontsize=16, fontweight="bold"
@@ -166,22 +144,11 @@ class SHAPAnalyzer:
     def plot_bar(
         self, max_display: int = 20, output_path: Optional[str] = None
     ) -> plt.Figure:
-        """
-        Generate SHAP bar plot (feature importance).
-
-        Args:
-            max_display: Maximum features to display
-            output_path: Path to save figure
-
-        Returns:
-            plt.Figure: Figure object
-        """
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
         logger.info(f"Generating SHAP bar plot (top {max_display})")
 
-        # Create bar plot
         shap.summary_plot(
             self.shap_values,
             self.background_data,
@@ -191,7 +158,6 @@ class SHAPAnalyzer:
             show=False,
         )
 
-        # Get the current figure
         current_fig = plt.gcf()
         current_fig.suptitle(
             "Top Feature Importance (Mean |SHAP|)", fontsize=16, fontweight="bold"
@@ -209,22 +175,11 @@ class SHAPAnalyzer:
     def plot_waterfall(
         self, instance_index: int, output_path: Optional[str] = None
     ) -> plt.Figure:
-        """
-        Generate waterfall plot for a single instance.
-
-        Args:
-            instance_index: Index of instance to explain
-            output_path: Path to save figure
-
-        Returns:
-            plt.Figure: Figure object
-        """
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
         logger.info(f"Generating waterfall plot for instance {instance_index}")
 
-        # Create waterfall plot
         shap.waterfall_plot(
             shap.Explanation(
                 values=self.shap_values[instance_index],
@@ -238,7 +193,6 @@ class SHAPAnalyzer:
             max_display=15,
         )
 
-        # Get the current figure
         current_fig = plt.gcf()
         current_fig.suptitle(
             f"SHAP Waterfall Plot - Instance {instance_index}",
@@ -255,19 +209,12 @@ class SHAPAnalyzer:
         return current_fig
 
     def plot_force(self, instance_index: int, output_path: Optional[str] = None):
-        """
-        Generate force plot for a single instance.
-
-        Args:
-            instance_index: Index of instance to explain
-            output_path: Path to save HTML file
-        """
+        """Writes HTML, not an image - force plots are javascript."""
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
         logger.info(f"Generating force plot for instance {instance_index}")
 
-        # Create force plot
         force_plot = shap.force_plot(
             self.expected_value if self.expected_value is not None else 0,
             self.shap_values[instance_index],
@@ -278,7 +225,6 @@ class SHAPAnalyzer:
         )
 
         if output_path:
-            # Save as HTML
             with open(output_path, "w") as f:
                 f.write(str(force_plot))
             logger.info(f"Saved force plot to {output_path}")
@@ -286,12 +232,7 @@ class SHAPAnalyzer:
         return force_plot
 
     def get_feature_importance(self) -> pd.DataFrame:
-        """
-        Get feature importance from SHAP values.
-
-        Returns:
-            pd.DataFrame: Feature importance
-        """
+        """feature / shap_importance, where importance is mean |SHAP| over the background rows."""
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
@@ -304,16 +245,10 @@ class SHAPAnalyzer:
         return df
 
     def get_biological_insights(self) -> Dict:
-        """
-        Map SHAP importance to biological categories.
-
-        Returns:
-            Dict: Biological insights
-        """
+        """Sums SHAP importance within hand-assigned feature groups."""
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
-        # Define biological categories
         categories = {
             "Genomic": [
                 "gc_content",
@@ -380,7 +315,6 @@ class SHAPAnalyzer:
             ],
         }
 
-        # Calculate importance per category
         importance = self.get_feature_importance()
 
         category_importance = {}
@@ -392,7 +326,6 @@ class SHAPAnalyzer:
                 category_importance[category] = cat_importance["shap_importance"].sum()
                 category_features[category] = cat_importance.head(3).to_dict("records")
 
-        # Rank categories
         sorted_categories = sorted(
             category_importance.items(), key=lambda x: x[1], reverse=True
         )
@@ -407,28 +340,17 @@ class SHAPAnalyzer:
         return insights
 
     def explain_instance(self, instance: Union[np.ndarray, pd.DataFrame]) -> Dict:
-        """
-        Get detailed explanation for a single instance.
-
-        Args:
-            instance: Single instance to explain
-
-        Returns:
-            Dict: Explanation details
-        """
         if self.shap_values is None:
             raise ValueError("Must call fit_explainer first")
 
         if isinstance(instance, pd.DataFrame):
             instance = instance.values
 
-        # Get SHAP values for this instance
         shap_values = self.explainer.shap_values(instance.reshape(1, -1))
 
         if isinstance(shap_values, list):
             shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
 
-        # Create explanation
         explanation = {
             "base_value": self.expected_value if self.expected_value is not None else 0,
             "prediction": self.model.predict(instance.reshape(1, -1))[0],
@@ -437,19 +359,16 @@ class SHAPAnalyzer:
             "contributions": {},
         }
 
-        # Get top contributing features
         shap_df = pd.DataFrame(
             {"feature": self.feature_names, "shap_value": shap_values[0]}
         )
         shap_df["abs_shap"] = np.abs(shap_df["shap_value"])
         shap_df = shap_df.sort_values("abs_shap", ascending=False)
 
-        # Top positive contributors
         explanation["top_positive"] = (
             shap_df[shap_df["shap_value"] > 0].head(5).to_dict("records")
         )
 
-        # Top negative contributors
         explanation["top_negative"] = (
             shap_df[shap_df["shap_value"] < 0].head(5).to_dict("records")
         )
