@@ -1,5 +1,11 @@
 # Predicting Bundibugyo virus host susceptibility from host traits: a pipeline study on simulated data
 
+![Python](https://img.shields.io/badge/python-3.10-3776AB)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-F7931E)
+![XGBoost](https://img.shields.io/badge/XGBoost-boosting-189FDD)
+![Flask](https://img.shields.io/badge/Flask-API-000000)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED)
+
 A machine-learning study of whether host biology, ecology and taxonomy can predict which
 animal species are susceptible to Bundibugyo virus (BDBV), together with the full pipeline
 that produces the result: feature engineering, four classifiers, cross-validation, ablation,
@@ -8,10 +14,21 @@ the reference table.
 
 **The headline finding is negative, and that is the point of the write-up.** On a conventional
 random split the selected model reaches ROC-AUC 0.684. When the evaluation is changed so that
-no record of a test species is ever seen during training, performance falls to ROC-AUC 0.504 —
-chance. Almost all of the apparent skill is the model recognising *which species a row belongs to*,
+no record of a test species is ever seen during training, performance falls to ROC-AUC 0.504,
+which is chance. Almost all of the apparent skill is the model recognising *which species a row belongs to*,
 not learning a trait-to-susceptibility rule that transfers to a new species. Everything below
 documents how that conclusion was reached and what it costs the intended application.
+
+### At a glance
+
+| | |
+|---|---|
+| Question | Do host traits predict which species Bundibugyo virus can infect, in a way that transfers to unseen species? |
+| Data | 10,000 simulated records, 41 species, 51 engineered features |
+| Models | Random Forest, Logistic Regression, SVM, XGBoost |
+| Random-split ROC-AUC | 0.684 (SVM) |
+| Species-grouped ROC-AUC | 0.504, which is chance |
+| Takeaway | The model learns species identity, not a transferable rule. Evaluation design decides whether a result like this is trusted. |
 
 ---
 
@@ -22,18 +39,18 @@ District, western Uganda, and described the following year as a species distinct
 ebolaviruses, differing from them by more than 30% at the genome level [1]; it was formally
 placed in the revised Filoviridae taxonomy as *Bundibugyo ebolavirus* [2]. Like the other
 filoviruses, its maintenance host range is only partly known. The evidence that exists points
-towards bats — Ebola virus antibodies and RNA were found in three fruit bat species [3], and
-Marburg virus was isolated from wild *Rousettus aegyptiacus* [4] — but surveillance is sparse
+towards bats. Ebola virus antibodies and RNA were found in three fruit bat species [3], and
+Marburg virus was isolated from wild *Rousettus aegyptiacus* [4]. But surveillance is sparse
 and geographically uneven, and the species that have never been sampled vastly outnumber the
 ones that have.
 
 That gap is the usual motivation for host-prediction models. If susceptibility were predictable
-from traits that are already catalogued for thousands of mammals — body mass, lifespan, diet,
-roosting and social behaviour, range size, degree of contact with people — then a model could
+from traits that are already catalogued for thousands of mammals (body mass, lifespan, diet,
+roosting and social behaviour, range size, degree of contact with people), then a model could
 rank unsampled species and tell field programmes where to look first. This is an established
 line of work: host and viral traits have been used to predict zoonotic spillover across mammals
 [5], and trait-based classifiers have been used to flag rodent species as likely reservoirs of
-future zoonoses [6]. It is also contested — a comparison across 415 viruses found the proportion
+future zoonoses [6]. It is also contested: a comparison across 415 viruses found the proportion
 of zoonotic viruses to be roughly constant across host orders, which argues that host traits may
 carry less predictive weight than the approach assumes [7].
 
@@ -50,8 +67,8 @@ The dataset in `data/raw/filovirus_data_template.csv` is **simulated**, not cura
 data. It contains 10,000 records over 41 named species, roughly 244 rows per species, with
 continuous trait values drawn around a per-species profile and infection labels drawn
 stochastically. The repository's own generator (`src/data/generator.py`) states the same thing
-and notes that the encoded associations — higher risk for primates and pteropodid bats, for
-instance — are hypothesised from the published host range [3, 4] rather than measured. The viral
+and notes that the encoded associations (higher risk for primates and pteropodid bats, for
+instance) are hypothesised from the published host range [3, 4] rather than measured. The viral
 constants it draws around (genome ≈ 18,950 bp, GC ≈ 41%, glycoprotein ≈ 676 aa) are in the right
 range for a filovirus [2], but the per-species trait values and every label are generated.
 
@@ -141,8 +158,8 @@ expects the generator's canonical column names (`virus_species`, `gp_length`, `g
 while the CSV uses `virus`, `glycoprotein_length`, `viral_genome_length`. The `is_bdbv`/`is_ebov`
 family, `gp_length_ratio`, and the taxonomic bumps inside `bdbv_risk` are all computed from
 columns that are absent, so `bdbv_risk` stays identically zero. The loader logs this as
-`Missing required columns: ['virus_species']` on every run. The practical effect is small here —
-one virus, so those features would be near-constant anyway — but the ablation in Section 5.4 is
+`Missing required columns: ['virus_species']` on every run. The practical effect is small here,
+since with one virus those features would be near-constant anyway, but the ablation in Section 5.4 is
 measuring a `bdbv_risk` that is a column of zeros, and that is worth knowing.
 
 ### 3.2 Models
@@ -151,10 +168,10 @@ Four classifiers from `src/models/classical.py`, three from scikit-learn [11] an
 XGBoost [12], all with `class_weight="balanced"` to handle the 24% positive rate, all seeded with
 `random_state=42`:
 
-- **Random Forest** — 100 trees, unlimited depth
-- **Logistic Regression** — L2, `C=1.0`, lbfgs, 1,000 iterations
-- **SVM** — RBF kernel, `C=1.0`, `gamma="scale"`, probabilities enabled
-- **XGBoost** — 100 rounds, depth 6, learning rate 0.1, subsample 0.8
+- **Random Forest**: 100 trees, unlimited depth
+- **Logistic Regression**: L2, `C=1.0`, lbfgs, 1,000 iterations
+- **SVM**: RBF kernel, `C=1.0`, `gamma="scale"`, probabilities enabled
+- **XGBoost**: 100 rounds, depth 6, learning rate 0.1, subsample 0.8
 
 Model selection uses F1 rather than accuracy, which is the right call on a 76/24 split: a model
 that predicts "resistant" for every row scores 0.759 accuracy and is worthless.
@@ -205,8 +222,8 @@ SVM is selected on F1, reproducing the pipeline's own choice exactly.
 The accuracy column is a trap worth naming. XGBoost and Random Forest look best on accuracy
 (0.764, 0.763) while finding only 17% and 15% of the susceptible records respectively. Their
 balanced accuracy, around 0.55, is the honest reading. SVM gives up 12 points of accuracy to
-raise recall from 0.15 to 0.64, and on a screening task — where a missed host is far more costly
-than a species sent for unnecessary sampling — that is the trade to make.
+raise recall from 0.15 to 0.64, and on a screening task, where a missed host is far more costly
+than a species sent for unnecessary sampling, that is the trade to make.
 
 The models separate far less on ROC-AUC (0.661 to 0.684) than on F1 (0.231 to 0.462). They rank
 cases about equally well; they differ mostly in where they put the decision threshold.
@@ -221,7 +238,7 @@ cases about equally well; they differ mostly in where they put the decision thre
 | **SVM** | 0.642 | **0.640** | **0.462** | **0.684** |
 
 The selected model clears every naive baseline, but the margin deserves a close look. "Always
-positive" — a rule with no model at all — reaches F1 0.389 against SVM's 0.462. On this class
+positive" (a rule with no model at all) reaches F1 0.389 against SVM's 0.462. On this class
 balance, F1 alone is a weak claim of skill; the honest evidence for the model is balanced
 accuracy 0.640 against 0.500 and ROC-AUC 0.684 against 0.500.
 
@@ -247,7 +264,7 @@ that include chance. The tree ensembles fail hardest: Random Forest's F1 goes fr
 
 The default split is not wrong by accident; it is wrong for this question. With 244 near-identical
 rows per species, a random split guarantees that roughly 183 rows of every test species sat in
-training. The model does not have to generalise across species — it can recognise the species and
+training. The model does not have to generalise across species; it can recognise the species and
 recall its base rate. Generalising across species is the task it would face in deployment, and it
 never has to do it during evaluation.
 
@@ -264,7 +281,7 @@ test set.
 
 | Condition | Features removed | F1 | ROC-AUC | ΔAUC |
 |---|---|---|---|---|
-| Full feature set | — | 0.462 | 0.684 | — |
+| Full feature set | n/a | 0.462 | 0.684 | n/a |
 | − Viral genome | 10 | 0.471 | 0.683 | −0.001 |
 | − Derived risk scores | 4 | 0.455 | 0.684 | −0.000 |
 | − Ecology and behaviour | 16 | 0.460 | 0.681 | −0.003 |
@@ -272,12 +289,12 @@ test set.
 | − **Taxonomy** | 13 | 0.428 | **0.657** | **−0.027** |
 
 Only taxonomy matters. Dropping all ten viral features changes AUC by one thousandth and
-*improves* F1 — unsurprising, since every row is the same virus and those columns are noise.
+*improves* F1, unsurprising, since every row is the same virus and those columns are noise.
 Dropping the entire 16-feature ecology and behaviour block costs 0.003 AUC. Dropping the four
 derived risk scores costs nothing measurable, which is expected for `bdbv_risk`, a column of
 zeros (Section 3.1).
 
-Removing taxonomy — which includes the label-encoded `host_species` column — costs more than
+Removing taxonomy (which includes the label-encoded `host_species` column) costs more than
 every other group combined. The signal the pipeline is exploiting is taxonomic identity.
 
 ### 5.5 Permutation importance and the identity ceiling
@@ -293,7 +310,7 @@ list, geographic range, is itself nearly a species fingerprint in this table, si
 has one range value plus noise.
 
 How much signal is there to find? Score each test record by the infection rate its species showed
-in the training split — a predictor that knows nothing except which species a row is:
+in the training split. This predictor knows nothing except which species a row is:
 
 | Predictor | Test ROC-AUC |
 |---|---|
@@ -304,7 +321,7 @@ in the training split — a predictor that knows nothing except which species a 
 
 The oracle's 0.705 is the practical ceiling: because labels are drawn stochastically within a
 species, no predictor can do much better without memorising individual rows. SVM reaches 0.684,
-recovering 90% of the available improvement over chance — and the species-identity oracle
+recovering 90% of the available improvement over chance, and the species-identity oracle
 needs no features at all. The model is an expensive way to approximate a lookup table of
 per-species base rates, which is exactly why it scores 0.504 when the lookup is unavailable.
 
@@ -325,7 +342,7 @@ records is the number that sets the workload.
 **Figure 4.** ROC and precision–recall curves for all four models.
 
 Precision–recall is the more informative view at 24% prevalence. Average precision runs 0.383 to
-0.401 across the four models against a no-skill floor of 0.241 — a real but modest lift,
+0.401 across the four models against a no-skill floor of 0.241: a real but modest lift,
 consistent with everything above.
 
 ![Figure 9](figures/fig09_per_species.png)
@@ -348,9 +365,9 @@ linear, kernel and tree-ensemble families land within 0.023 AUC of each other on
 and all collapse together under species-grouped folds. No amount of model selection or tuning
 addresses that, because the problem is in how the data was split, not in how the function was
 fitted. For any host-prediction task where rows cluster by species, grouped cross-validation is
-the only evaluation that answers the question being asked. This is not a new point — blocked
+the only evaluation that answers the question being asked. This is not a new point. Blocked
 cross-validation has been recommended for ecological data with hierarchical or phylogenetic
-structure precisely because random folds understate predictive error [8] — but it is easy to
+structure precisely because random folds understate predictive error [8], but it is easy to
 skip, and skipping it here changed the conclusion completely.
 
 **Identity leakage can hide inside features that look biological.** `host_species` entering the
@@ -365,8 +382,8 @@ XGBoost, which finds 17% of susceptible records. Selecting on F1 chose SVM at 64
 "work" by their own metric, and only one is useful for screening. The pipeline's choice of F1 is
 right, and balanced accuracy or PR-AUC would be defensible alongside it.
 
-For the applied question the project set out to ask — can trait tables of this shape rank
-unsampled species? — the answer on this data is no. The model that looks usable on a random split
+For the applied question the project set out to ask (can trait tables of this shape rank
+unsampled species?), the answer on this data is no. The model that looks usable on a random split
 is at chance on species it has not seen, which is the only setting where a host-prediction model
 has any value. That result sits closer to [7] than to [5] and [6], though on simulated data it is
 evidence about the pipeline rather than a contribution to that disagreement.
@@ -386,14 +403,14 @@ Listed in rough order of how much they constrain the conclusions.
    `FeatureEngineer.fit_transform` on all 10,000 records and splits afterwards, so scaler
    statistics, label-encoder vocabularies and imputation medians see the test set. Given 244
    rows per species, the species-grouped collapse is the dominant effect and this leak is minor
-   by comparison — but it is a leak, and the fix is a two-line reordering.
+   by comparison, but it is a leak, and the fix is a two-line reordering.
 4. **Several engineered features are dead.** The column-name mismatch described in Section 3.1
    leaves `bdbv_risk` identically zero and the `is_bdbv` family never created. Harmless on
    single-virus data, actively misleading if the pipeline is pointed at a multi-virus table.
 5. **The deployment path inherits the generalisation failure.** `AdvancedPredictionPipeline`
    reports 95% confidence for species in the reference table and 51–85% for unknown species via
    20-neighbour interpolation. Those numbers are hard-coded and derived from feature similarity,
-   not from any measured accuracy on unseen species — which Section 5.3 puts at chance. The
+   not from any measured accuracy on unseen species, which Section 5.3 puts at chance. The
    confidence figures the API returns are not calibrated against that result.
 6. **No hyperparameter search.** All four models run at library defaults with balanced class
    weights. `src/models/hyperparameter.py` exists but is not used by the training script. Tuning
@@ -440,7 +457,7 @@ pip install -r requirements-dev.txt
 python -m pytest tests -q
 ```
 
-`pytest-cov` is required — the pytest configuration enables coverage, so without it every test
+`pytest-cov` is required: the pytest configuration enables coverage, so without it every test
 errors during setup rather than failing honestly.
 
 Optional SHAP [13] analysis on a subset, since kernel SHAP on all 10,000 records is impractical:
@@ -526,8 +543,8 @@ The ordering follows Section 7.
 4. Replace the hard-coded confidence values in the prediction pipeline with intervals estimated
    from species-grouped performance.
 5. Repeat the whole study on curated data. Infection and serology records from the published
-   filovirus literature [3, 4], joined to a mammal trait database — PanTHERIA [9] or the newer
-   COMBINE [10], which covers 54 traits for 6,234 species — is the only route to a claim about
+   filovirus literature [3, 4], joined to a mammal trait database (PanTHERIA [9] or the newer
+   COMBINE [10], which covers 54 traits for 6,234 species) is the only route to a claim about
    biology rather than about pipelines. Expect a few hundred labelled species at most, which
    makes the species-grouped evaluation in Section 5.3 more important, not less.
 
